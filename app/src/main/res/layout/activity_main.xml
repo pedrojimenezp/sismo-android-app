@@ -1,0 +1,35 @@
+<GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity"
+    android:columnCount="1"
+    android:rowCount="2"
+    android:alignmentMode="alignBounds"
+    android:columnOrderPreserved="false"
+    android:useDefaultMargins="false"
+    android:orientation="vertical"
+    android:background="@color/primary"
+    android:padding="10dp">
+
+    <TextView android:text="@string/app_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/textView"
+
+        android:textStyle="bold"
+        android:enabled="false"
+        android:typeface="sans"
+        android:textSize="100sp"
+        android:gravity="center"
+        android:layout_rowWeight="2"
+        android:layout_gravity="fill"
+        android:textColor="@color/icons" />
+
+    <ProgressBar
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/progressBar"
+        android:layout_rowWeight="1"
+        android:layout_gravity="fill_vertical|center_horizontal" />
+
+</GridLayout>
