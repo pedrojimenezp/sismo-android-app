@@ -6,6 +6,8 @@
         android:orderInCategory="100" app:showAsAction="never" />
     <item android:id="@+id/action_add_moto" android:title="@string/action_add_moto"
         android:orderInCategory="100" app:showAsAction="never" />
+    <item android:id="@+id/action_load_motos" android:title="@string/action_load_motos"
+        android:orderInCategory="100" app:showAsAction="never" />
     <item android:id="@+id/action_logout" android:title="@string/action_logout"
         android:orderInCategory="100" app:showAsAction="never" />
 </menu>

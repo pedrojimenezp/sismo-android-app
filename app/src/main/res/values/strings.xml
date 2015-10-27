@@ -26,4 +26,17 @@
     <string name="title_activity_maps">Map</string>
     <string name="title_activity_add_moto">AddMotoActivity</string>
     <string name="action_add_moto">Add moto</string>
+    <string name="model">Model</string>
+    <string name="TextOfAddMotoButton">Add moto</string>
+    <string name="TextOfUpdateMotoButton">Update information</string>
+    <string name="TextOfLoadImageButton">Load image</string>
+    <string name="mac">Mac</string>
+    <string name="TextOfMonitoringStatusTextView">Monitoring status:</string>
+    <string name="TextOfSafetyLockStatusTextView">Safety lock:</string>
+    <string name="TextOfElectricalFlowStatusTextView">Electrical flow:</string>
+    <string name="TextOfGetUbicationButton">Get ubication</string>
+    <string name="TextOfStartMonitoringButton">Start monitoring</string>
+    <string name="TextOfSeeStatusButton">See status</string>
+    <string name="TextOfDeleteMotoButton">Delete</string>
+    <string name="action_load_motos">Load motos</string>
 </resources>

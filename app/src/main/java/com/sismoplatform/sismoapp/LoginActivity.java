@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -18,7 +19,7 @@ import org.json.JSONObject;
 import java.net.ConnectException;
 
 public class LoginActivity extends AppCompatActivity {
-
+    String username = "";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,95 +48,105 @@ public class LoginActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public void onClickLoginButton(View view) throws Exception {
+    public void onClickLoginButton(View view) {
         EditText usernameTextView = (EditText)findViewById(R.id.usernameTextView);
         EditText passwordTextView = (EditText)findViewById(R.id.passwordTextView);
-        String params = "username="+usernameTextView.getText().toString()+"&password="+passwordTextView.getText().toString();
-        new Login().execute(params);
-
+        username = usernameTextView.getText().toString();
+        String password = passwordTextView.getText().toString();
+        if(!username.isEmpty() && !password.isEmpty()){
+            String params = username+":"+password;
+            params = Base64.encodeToString(params.getBytes(),Base64.DEFAULT);
+            params = "Basic "+params;
+            new Login().execute(params);
+        }else{
+            Toast toas = Toast.makeText(this, "Yous must to insert unername and password", Toast.LENGTH_SHORT);
+            toas.show();
+        }
     }
 
     public class Login extends AsyncTask<String, Void, String> {
-        ProgressDialog pDialog;
+        ProgressDialog progressDialog;
 
        @Override
         protected void onPreExecute() {
             super.onPreExecute();
             // Showing progress dialog
-            pDialog = new ProgressDialog(LoginActivity.this);
-            pDialog.setMessage("Please wait...");
-            pDialog.setCancelable(false);
-            pDialog.show();
+            progressDialog = new ProgressDialog(LoginActivity.this);
+            progressDialog.setMessage("Loging in, Please wait...");
+            progressDialog.setCancelable(false);
+            progressDialog.show();
 
         }
 
         @Override
         protected String doInBackground(String... params) {
             try {
-                HTTPClient httpClient = new HTTPClient("http://192.168.1.184:4000/api/v1/sessions");
-                //httpClient.url = "http://www.google.com/search?q=mkyong";
+                HTTPClient httpClient = new HTTPClient("http://192.168.1.184:4000/api/v1/access-token");
 
-                String bodyParams = params[0];
+                String basicToken = params[0];
 
-                httpClient.setMethod("POST");
-                httpClient.addParams(bodyParams);
+                httpClient.setMethod("GET");
+                httpClient.addHeader("authorization", basicToken);
                 String response = httpClient.makeRequest();
                 System.out.println(response);
 
                 JSONObject jsonObj = new JSONObject(response);
-                String responseType = jsonObj.getString("type");
-                System.out.println(responseType);
-                if(responseType.equals("LOGIN_SUCCESS")) {
-                    String accessToken = jsonObj.getString("accessToken");
-                    String refreshToken = jsonObj.getString("refreshToken");
-                    SharedPreferences sp = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+                int responseCode = jsonObj.getInt("code");
+                String responseStatus = jsonObj.getString("status");
+                if(responseCode == 200) {
+                    JSONObject result = jsonObj.getJSONObject("result");
+                    JSONObject tokens = result.getJSONObject("tokens");
+                    String accessToken = tokens.getString("accessToken");
+                    String refreshToken = tokens.getString("refreshToken");
+                    SharedPreferences sp = getSharedPreferences(SISMO.SHARED_PREFERENCES, Context.MODE_PRIVATE);
                     SharedPreferences.Editor editor = sp.edit();
                     editor.putString("accessToken", accessToken);
                     editor.putString("refreshToken", refreshToken);
+                    editor.putString("username", username);
                     editor.apply();
+                    SISMO.AccessToken = accessToken;
+                    SISMO.RefreshToken = refreshToken;
+                    SISMO.Username = username;
                 }
-                return responseType;
+                return responseStatus;
             } catch (ConnectException e1) {
                 System.out.println(e1.toString());
-                return "CONNECTION_ERROR";
+                return "Connection error";
             } catch (Exception e2){
                 System.out.println(e2.toString());
-                return "ANOTHER_ERROR";
+                return "Another error";
             }
         }
 
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-            // Dismiss the progress dialog
-            if (pDialog.isShowing()) {
-                pDialog.dismiss();
+            if (progressDialog.isShowing()) {
+                progressDialog.dismiss();
             }
             Toast toast;
             switch (result) {
-                case "LOGIN_SUCCESS" :
+                case "Ok" :
                     Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
                     startActivity(intent);
                     finish();
                     break;
-                case "BAD_REQUEST" :
+                case "Bad request" :
                     toast = Toast.makeText(getApplicationContext(), "You must to send an username and password", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
-                case "UNAUTHORIZED" :
+                case "Unauthorized" :
                     toast = Toast.makeText(getApplicationContext(), "Incorrect username or password", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
-                case "CONNECTION_ERROR" :
+                case "Connection error" :
                     toast = Toast.makeText(getApplicationContext(), "Error trying to connect to the server", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
-                case "ANOTHER_ERROR" :
+                case "Another error" :
                     toast = Toast.makeText(getApplicationContext(), "Something was wrong", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
-
-
             }
         }
     }

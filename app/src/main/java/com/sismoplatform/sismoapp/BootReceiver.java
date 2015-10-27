@@ -13,7 +13,7 @@ public class BootReceiver extends BroadcastReceiver
     @Override
     public void onReceive(Context context, Intent intent)
     {
-        Log.d(MainActivity.LOG_TAG, intent.getAction());
+        Log.d(SISMO.LOG_TAG, intent.getAction());
         Log.d(getClass().getCanonicalName(), "onReceive");
         context.startService(new Intent(context, MQTTService.class));
     }

@@ -18,28 +18,24 @@ import android.os.RemoteException;
 import android.support.design.widget.TabLayout;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Adapter;
 import android.widget.Toast;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
 
 
 public class HomeActivity extends AppCompatActivity {
-
-    private Messenger messenger = null;
-    private final Messenger messageHandler = new Messenger(new MessageHandler());
-
+    public Messenger mqttServiceMessenger = null;
+    public Messenger messageHandler = new Messenger(new MessageHandler());
 
     ViewPager viewPager;
-    TabPagerAdapter tabPagerAdapter;
-    ActionBar actionBar;
     TabLayout tabLayout;
-    Menu menu;
-    int RESULT_GALERY;
     private IntentFilter intentFilter = null;
     private PushReceiver pushReceiver;
 
@@ -48,11 +44,14 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i(SISMO.LOG_TAG, "HomeActivity.onCreate");
         setContentView(R.layout.activity_home);
+
         startService(new Intent(this, MQTTService.class));
 
         intentFilter = new IntentFilter();
-        intentFilter.addAction(MainActivity.MQTT_ACTION);
+        intentFilter.addAction(SISMO.MQTT.INTENT_ACTION_WARNING);
+        intentFilter.addAction(SISMO.MQTT.INTENT_ACTION_RESPONSE);
         pushReceiver = new PushReceiver();
         registerReceiver(pushReceiver, intentFilter);
 
@@ -64,26 +63,14 @@ public class HomeActivity extends AppCompatActivity {
         this.setupViewPager(this.viewPager);
 
         this.tabLayout = (TabLayout) findViewById(R.id.tab_layout);
-        //this.tabLayout.setTabMode(TabLayout.MODE_FIXED);
-        //this.tabLayout.setTabGravity(TabLayout.GRAVITY_FILL);
         this.tabLayout.setupWithViewPager(this.viewPager);
-        /*tabLayout.addTab(tabLayout.newTab().setText("MotosList"));
-        tabLayout.addTab(tabLayout.newTab().setText("Notifications"));
-        tabLayout.addTab(tabLayout.newTab().setText("Profile"));
-        tabLayout.getTabAt(0).setIcon(R.drawable.ic_moto_white);
-        tabLayout.getTabAt(1).setIcon(R.drawable.ic_notification_white);
-        tabLayout.getTabAt(2).setIcon(R.drawable.ic_user_white);*/
 
-
-
-        //this.tabPagerAdapter = new TabPagerAdapter(getSupportFragmentManager());
-        //viewPager.setAdapter(tabPagerAdapter);
-        //viewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));
-        tabLayout.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+        this.tabLayout.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 int tabPosition = tab.getPosition();
                 viewPager.setCurrentItem(tabPosition);
+                //Log.i(SISMO.LOG_TAG, "New Tab selected");
                 /*switch(tabPosition){
                     case 0:
                         getMenuInflater().inflate(R.menu.menu_motos, menu);
@@ -108,31 +95,31 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onStart()
-    {
+    protected void onStart() {
         super.onStart();
+        Log.i(SISMO.LOG_TAG, "HomeActivity.onStart");
         bindService(new Intent(this, MQTTService.class), serviceConnection, 0);
     }
 
     @Override
-    protected void onStop()
-    {
-        super.onStop();
-        unbindService(serviceConnection);
-    }
-
-    @Override
-    protected void onResume()
-    {
+    protected void onResume() {
         super.onResume();
+        Log.i(SISMO.LOG_TAG, "HomeActivity.onResumen");
         registerReceiver(pushReceiver, intentFilter);
     }
 
     @Override
-    protected void onPause()
-    {
+    protected void onPause() {
         super.onPause();
+        Log.i(SISMO.LOG_TAG, "HomeActivity.onPause");
         unregisterReceiver(pushReceiver);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.i(SISMO.LOG_TAG, "HomeActivity.onStop");
+        unbindService(serviceConnection);
     }
 
 
@@ -150,7 +137,7 @@ public class HomeActivity extends AppCompatActivity {
         if (id == R.id.action_settings) {
             return true;
         } else if(id == R.id.action_logout){
-            SharedPreferences sp = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+            SharedPreferences sp = getSharedPreferences(SISMO.SHARED_PREFERENCES, Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sp.edit();
             editor.remove("accessToken");
             editor.remove("refreshToken");
@@ -173,27 +160,6 @@ public class HomeActivity extends AppCompatActivity {
         viewPager.setAdapter(adapter);
     }
 
-    public void onClickMotoItemList(View view)  {
-        Intent intent = new Intent(HomeActivity.this, MotoDetailsActivity.class);
-        startActivity(intent);
-
-    }
-
-    public void onClickLoadImage(View view) throws Exception {
-        Intent i = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-
-        startActivityForResult(i, 0);
-
-    }
-
-    public void onClickSeeStatus(View view) throws Exception {
-        Intent i = new Intent(HomeActivity.this, MotoStatusActivity.class);
-
-        startActivity(i);
-
-    }
-
-
     /*
     Methods to manage MQTT Service
      */
@@ -203,59 +169,57 @@ public class HomeActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent i)
         {
-            String topic = i.getStringExtra(MQTTService.TOPIC);
-            String message = i.getStringExtra(MQTTService.MESSAGE);
-            int notificationId = i.getIntExtra(MQTTService.NOTIFICATION_ID, -1);
-            Toast.makeText(context, "Push message received - " + topic + ":" + message, Toast.LENGTH_LONG).show();
-            NotificationManager mNotifyMgr =
-                    (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            String topic = i.getStringExtra(SISMO.MQTT.KEYS.TOPIC);
+            String message = i.getStringExtra(SISMO.MQTT.KEYS.MESSAGE);
+            int notificationId = i.getIntExtra(SISMO.MQTT.KEYS.NOTIFICATION_ID, -1);
+
+            NotificationManager mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             mNotifyMgr.cancel(notificationId);
+
+            //Toast.makeText(context, "Push message received - " + topic + ":" + message, Toast.LENGTH_LONG).show();
+
         }
     }
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
-        public void onServiceConnected(ComponentName arg0, IBinder binder)
-        {
-            messenger = new Messenger(binder);
-            Bundle data = new Bundle();
-            data.putCharSequence(MQTTService.INTENT_ACTION, MainActivity.MQTT_ACTION);
-            Message msg = Message.obtain(null, MQTTService.REGISTER);
-            msg.setData(data);
-            msg.replyTo = messageHandler;
-            try {
-                messenger.send(msg);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
+        public void onServiceConnected(ComponentName arg0, IBinder binder){
+            Log.i(SISMO.LOG_TAG, "HomeActivity.ServiceConnection.onServiceConnected");
+            mqttServiceMessenger = new Messenger(binder);
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName arg0)
-        {
+        public void onServiceDisconnected(ComponentName arg0) {
+            Log.i(SISMO.LOG_TAG, "HomeActivity.ServiceConnection.onServiceDisconnected");
         }
     };
 
-    class MessageHandler extends Handler
-    {
+    class MessageHandler extends Handler {
         @Override
         public void handleMessage(Message msg)
         {
+            Log.i(SISMO.LOG_TAG, "HomeActivity.MessageHandler.handleMessage");
             switch (msg.what)
             {
-                case MQTTService.SUBSCRIBE: 	break;
-                case MQTTService.PUBLISH:		break;
-                case MQTTService.REGISTER:		break;
-                default:
-                    super.handleMessage(msg);
-                    return;
+                case SISMO.MQTT.ACTIONS.SUBSCRIBE: break;
+                case SISMO.MQTT.ACTIONS.PUBLISH: {
+                    Bundle data = msg.getData();
+                    Boolean status = data.getBoolean("published");
+                    if(status){
+                        Toast.makeText(getApplicationContext(), "Published:"+ String.valueOf(status), Toast.LENGTH_SHORT).show();
+                    }else{
+                        String error = data.getString("error");
+                        Toast.makeText(getApplicationContext(), "Error:"+ error, Toast.LENGTH_SHORT).show();
+                    }
+                }
+
             }
 
-            Bundle b = msg.getData();
-            if (b != null) {
-                Boolean status = b.getBoolean(MQTTService.STATUS);
-                Log.i(MainActivity.LOG_TAG, "Status from MQTT service on the case "+msg.what+": "+status.toString());
-            }
+            //Bundle b = msg.getData();
+            //if (b != null) {
+                //Boolean status = b.getBoolean(SISMO.MQTT.KEYS.STATUS);
+                //Log.i(SISMO.LOG_TAG, "Status from MQTT mqttServiceMessenger on the case "+msg.what+": "+status.toString());
+            //}
         }
     }
 }

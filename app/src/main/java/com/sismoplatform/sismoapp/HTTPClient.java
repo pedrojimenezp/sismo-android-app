@@ -55,7 +55,7 @@ public class HTTPClient {
         }
     }
 
-    public String makeRequest() throws Exception{
+    public String makeRequest() throws Exception {
         this.connection.connect();
 
         int responseCode = this.connection.getResponseCode();

@@ -5,6 +5,7 @@ package com.sismoplatform.sismoapp;
  */
 
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -20,6 +21,7 @@ import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.widget.Toast;
 
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -28,45 +30,37 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.json.JSONObject;
 
-import java.util.Hashtable;
-import java.util.Vector;
+import java.util.Arrays;
 
 
 public class MQTTService extends Service
 {
-    enum CONNECTION_STATE
-    {
-        DISCONNECTED,
-        CONNECTING,
-        CONNECTED
-    }
 
-    public static final int REGISTER = 0;
-    public static final int SUBSCRIBE = 1;
-    public static final int PUBLISH = 2;
-    public static final int CONNECT = 3;
-    private CONNECTION_STATE connectionState = CONNECTION_STATE.DISCONNECTED;
-
-
-    public static final String TOPIC = "topic";
-    public static final String MESSAGE = "message";
-    public static final String NOTIFICATION_ID = "notification_id";
-    public static final String STATUS = "status";
-    public static final String INTENT_ACTION = "intentaction";
-
-
+    private SISMO.MQTT.CONNECTION_STATE connectionState = SISMO.MQTT.CONNECTION_STATE.DISCONNECTED;
 
     private static boolean serviceIsRunning = false;
-    private static int notificationId = 0;
+
     private static MQTTConnection connection = null;
-    private final Messenger clientMessenger = new Messenger(new MessageHandler());
+
+    public Messenger messageHandler = new Messenger(new MessageHandler());
+
+    public String deviceId;
+    public String username;
 
     @Override
     public void onCreate()
     {
+        Log.i(SISMO.LOG_TAG, "MQTTService.onCreate");
         super.onCreate();
-        connection = new MQTTConnection();
+        SharedPreferences sp = getSharedPreferences(SISMO.SHARED_PREFERENCES, Context.MODE_PRIVATE);
+
+        deviceId = sp.getString("deviceId", "");
+        username = sp.getString("username", "");
+        if(!deviceId.isEmpty() && !username.isEmpty()){
+            connection = new MQTTConnection();
+        }
     }
 
     @Override
@@ -74,116 +68,99 @@ public class MQTTService extends Service
         if (serviceIsRunning) {
             return START_STICKY;
         } else {
-            serviceIsRunning = true;
             super.onStartCommand(intent, flags, startId);
-            connection.start();
+            if(connection != null){
+                connection.start();
+                serviceIsRunning = true;
+            }
             return START_STICKY;
         }
     }
 
     @Override
     public void onDestroy() {
-        connection.end();
+        if(connection!= null){
+            connection.end();
+        }
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        return clientMessenger.getBinder();
+        Log.i(SISMO.LOG_TAG, "MQTTService.onBind");
+        Toast.makeText(getApplicationContext(), "binding", Toast.LENGTH_SHORT).show();
+        return messageHandler.getBinder();
     }
 
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.i(SISMO.LOG_TAG, "MQTTService.onUnbind");
+        Toast.makeText(getApplicationContext(), "unbinding", Toast.LENGTH_SHORT).show();
+        return super.onUnbind(intent);
+    }
 
     class MessageHandler extends Handler  {
         @Override
-        public void handleMessage(Message message)
-        {
-            boolean status = false;
-
-            switch (message.what)
-            {
-                case SUBSCRIBE:
-                    connection.subscribe(message);
-                case PUBLISH:
-                    connection.publish(message);
-                    break;
-                case REGISTER: {
-                    Bundle b = message.getData();
-                    if (b != null) {
-                        CharSequence cs = b.getCharSequence(INTENT_ACTION);
-                        if (cs != null) {
-                            String name = cs.toString().trim();
-                            if (name.isEmpty() == false) {
-                                connection.setIntentAction(name);
-                                status = true;
-                            }
-                        }
-                    }
-                    ReplytoClient(message.replyTo, message.what, status);
-                    break;
+        public void handleMessage(Message message) {
+            Log.i(SISMO.LOG_TAG, "MQTTService.MessageHandler.handleMessage");
+            if(connection != null){
+                switch (message.what) {
+                    case SISMO.MQTT.ACTIONS.CONNECT:
+                        connection.connect();
+                        break;
+                    case SISMO.MQTT.ACTIONS.SUBSCRIBE:
+                        connection.subscribe(message);
+                        break;
+                    case SISMO.MQTT.ACTIONS.UNSUBSCRIBE:
+                        connection.unsubscribe(message);
+                        break;
+                    case SISMO.MQTT.ACTIONS.SUBSCRIBE_TO_MOTOS_TOPICS:
+                        connection.subscribeToMotosTopics();
+                        break;
+                    case SISMO.MQTT.ACTIONS.UNSUBSCRIBE_TO_MOTOS_TOPICS:
+                        connection.unsubscribeToMotosTopics();
+                        break;
+                    case SISMO.MQTT.ACTIONS.PUBLISH:
+                        connection.publish(message);
+                        break;
                 }
-                case CONNECT:
-                    connection.connect();
-                    break;
+            }else{
+                if(message.replyTo != null){
+                    Bundle data = new Bundle();
+                    data.putString("error", "null_connection");
+                    Message m = Message.obtain(null, message.what);
+                    m.setData(data);
+                    try {
+                        message.replyTo.send(m);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
     }
 
-    private void ReplytoClient(Messenger receiver, int type, boolean status) {
-        if (receiver != null) {
-            Bundle data = new Bundle();
-            data.putBoolean(STATUS, status);
-            Message reply = Message.obtain(null, type);
-            reply.setData(data);
-            try {
-                receiver.send(reply);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-                Log.e(MainActivity.LOG_TAG, e.getMessage());
-            }
-        }
-    }
+
 
     private class MQTTConnection extends Thread  implements MqttCallback{
-        //private Class<?> launchActivity = null;
-        private String intentAction = null;
 
-        private int timeout = 5000;
-        private String host = "192.168.1.184";
-        private int port = 1883;
+        private int timeout = 10000;
         private String uri;
         private MqttClient client = null;
         private MqttConnectOptions options = new MqttConnectOptions();
-        //private Vector<String> topics = new Vector<String>();
-        private MessageHandler messageHandler = new MessageHandler();
-        String clientId = MqttClient.generateClientId();
-        private Hashtable topics = new Hashtable();
+        private MessageHandler MQTTMessageHandler = new MessageHandler();
 
         MQTTConnection(){
-            Log.i(MainActivity.LOG_TAG, "Reading shared preferences");
-            SharedPreferences sharedPreferences = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-            String h = sharedPreferences.getString("mqttHost", "");
-            int p = sharedPreferences.getInt("mqttPort", -1);
-            if (h != "") {
-                host = h;
-            }
-            if (p != -1) {
-                port = p;
-            }
-            uri = "tcp://" + host + ":" + port;
-            options.setCleanSession(true);
+            uri = "tcp://" + SISMO.MQTT.SERVER_HOST + ":" + SISMO.MQTT.SERVER_PORT;
+            options.setCleanSession(false);
             try {
-                Log.i(MainActivity.LOG_TAG, "Creating mqttClient");
-
-                client = new MqttClient(uri, clientId, null);
+                Log.i(SISMO.LOG_TAG, "Creating mqttClient");
+                client = new MqttClient(uri, deviceId, null);
                 client.setCallback(this);
                 this.connect();
             } catch (MqttException e) {
                 e.printStackTrace();
-                Log.e(MainActivity.LOG_TAG, e.getMessage());
+                Log.e(SISMO.LOG_TAG, e.getMessage());
             }
-        }
-
-        public void setIntentAction(String action) {
-            intentAction = action;
         }
 
         public void end(){
@@ -194,161 +171,248 @@ public class MQTTService extends Service
                     client.close();
                 } catch (MqttException e) {
                     e.printStackTrace();
-                    Log.e(MainActivity.LOG_TAG, e.getMessage());
+                    Log.e(SISMO.LOG_TAG, e.getMessage());
                 }
             }
         }
 
         public void connect(){
-            if (connectionState != CONNECTION_STATE.CONNECTED) {
+            if (connectionState != SISMO.MQTT.CONNECTION_STATE.CONNECTED) {
                 try {
-                    Log.i(MainActivity.LOG_TAG, "Trying to connect to "+uri);
+                    Log.i(SISMO.LOG_TAG, "Trying to connect to "+uri);
                     client.connect(options);
-                    connectionState = CONNECTION_STATE.CONNECTED;
-                    Log.i(getClass().getCanonicalName(), "Connected");
+                    connectionState = SISMO.MQTT.CONNECTION_STATE.CONNECTED;
+                    Log.i(SISMO.LOG_TAG, "Connected to " + uri);
                     subscribeToAllTopics();
                 } catch (MqttException e) {
-                    Log.d(MainActivity.LOG_TAG, "Connection attemp failed. " + e.getCause());
+                    Log.d(SISMO.LOG_TAG, "Connection attemp failed. " + e.getCause());
                     delayReconnect();
                 }
             }
         }
 
         private void subscribeToAllTopics(){
-            topics = new Hashtable();
-            Log.i(MainActivity.LOG_TAG, "Subscribing to existing topics");
-            subscribe(clientId);
+            Log.i(SISMO.LOG_TAG, "Subscribing to existing topics");
+            subscribe("/messages/to/" + username + "/apps/android/" + deviceId);
             subscribeToMotosTopics();
         }
 
         private void subscribeToMotosTopics(){
-            SharedPreferences sp = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-            String motosTopics = sp.getString("motos", "");
+            SharedPreferences sp = getSharedPreferences(SISMO.SHARED_PREFERENCES, Context.MODE_PRIVATE);
+            String motosTopics = sp.getString("motosTopics", "");
             String[] vectorTopics = motosTopics.split(";");
-            int length = vectorTopics.length;
-            for(int i=0;i<length;i++){
-                subscribe(vectorTopics[i]);
-            }
+            int[] vectorQOS = new int[vectorTopics.length];
+            Arrays.fill(vectorQOS, 1);
+            subscribe(vectorTopics, vectorQOS);
+        }
+
+        private void unsubscribeToMotosTopics(){
+            SharedPreferences sp = getSharedPreferences(SISMO.SHARED_PREFERENCES, Context.MODE_PRIVATE);
+            String motosTopics = sp.getString("motosTopics", "");
+            String[] vectorTopics = motosTopics.split(";");
+            unsubscribe(vectorTopics);
         }
 
         private void delayReconnect(){
-            messageHandler.sendEmptyMessageDelayed(CONNECT, timeout);
+            MQTTMessageHandler.sendEmptyMessageDelayed(SISMO.MQTT.ACTIONS.CONNECT, timeout);
         }
 
         private void subscribe(Message message) {
-            boolean subscribed = false;
-            Bundle b = message.getData();
-            if (b != null) {
-                CharSequence cs = b.getCharSequence(TOPIC);
-                if (cs != null) {
-                    String topic = cs.toString().trim();
-                    if (topic.isEmpty() == false) {
-                        subscribed = subscribe(topic);
-                    }
+            Bundle response = new Bundle();
+            Bundle data = message.getData();
+            if (data != null) {
+                String topic = data.getString(SISMO.MQTT.KEYS.TOPIC);
+                if (topic != null && !topic.isEmpty()) {
+                    response = subscribe(topic);
                 }
             }
-            ReplytoClient(message.replyTo, message.what, subscribed);
+            if(message.replyTo != null){
+                Message m = Message.obtain(null, message.what);
+                message.replyTo = messageHandler;
+                m.setData(response);
+                try {
+                    message.replyTo.send(m);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
-        private boolean subscribe(String topic) {
-            boolean subscribed = false;
+        private Bundle subscribe(String topic) {
+            Bundle response = new Bundle();
             try {
-                Log.i(MainActivity.LOG_TAG, "Trying to subscribe to " + topic);
-                client.subscribe(topic);
-                subscribed = true;
+                Log.i(SISMO.LOG_TAG, "Trying to subscribe to " + topic);
+                client.subscribe(topic, 1);
+                Log.i(SISMO.LOG_TAG, "Subscribed to " + topic);
+                response.putBoolean("subscribed", true);
             } catch (MqttException e) {
-                 Log.d(MainActivity.LOG_TAG, "Subscribe failed with reason code = " + e.getReasonCode());
-                 subscribed = false;
+                Log.d(SISMO.LOG_TAG, "Subscribe failed with reason code = " + e.getReasonCode());
+                response.putBoolean("subscribed", false);
+                response.putString("error", e.getMessage());
             }
-            if (subscribed) {
-                topics.put(topic, notificationId);
-                notificationId++;
+            return response;
+        }
+
+        private Bundle subscribe(String[] topics, int[] qos) {
+            Bundle data = new Bundle();
+            try {
+                Log.i(SISMO.LOG_TAG, "Trying to subscribe to " + Arrays.toString(topics));
+                client.subscribe(topics, qos);
+                Log.i(SISMO.LOG_TAG, "Subscribed to " + Arrays.toString(topics));
+                data.putBoolean("subscribed", true);
+            } catch (MqttException e) {
+                Log.d(SISMO.LOG_TAG, "Subscribe failed with reason code = " + e.getReasonCode());
+                data.putBoolean("subscribed", false);
+                data.putString("error", e.getMessage());
             }
-            return subscribed;
+            return data;
+        }
+
+        private void unsubscribe(Message message) {
+            Bundle response = new Bundle();
+            Bundle data = message.getData();
+            if (data != null) {
+                String topic = data.getString(SISMO.MQTT.KEYS.TOPIC);
+                if (topic != null && !topic.isEmpty()) {
+                    response = unsubscribe(topic);
+                }
+            }
+            if(message.replyTo != null) {
+                Message m = Message.obtain(null, message.what);
+                message.replyTo = messageHandler;
+                m.setData(response);
+                try {
+                    message.replyTo.send(m);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        private Bundle unsubscribe(String topic) {
+            Bundle response = new Bundle();
+            try {
+                Log.i(SISMO.LOG_TAG, "Trying to unsubscribe to " + topic);
+                client.unsubscribe(topic);
+                Log.i(SISMO.LOG_TAG, "Unsubscribed to " + topic);
+                response.putBoolean("unsubscribed", true);
+            } catch (MqttException e) {
+                Log.d(SISMO.LOG_TAG, "Unsubscribe failed with reason code = " + e.getReasonCode());
+                response.putBoolean("unsubscribed", false);
+                response.putString("error", e.getMessage());
+            }
+            return response;
+        }
+
+        private Bundle unsubscribe(String[] topics) {
+            Bundle response = new Bundle();
+            try {
+                Log.i(SISMO.LOG_TAG, "Trying to unsubscribe to " + Arrays.toString(topics));
+                client.subscribe(topics);
+                Log.i(SISMO.LOG_TAG, "Unsubscribed to " + Arrays.toString(topics));
+                response.putBoolean("unsubscribed", true);
+            } catch (MqttException e) {
+                Log.d(SISMO.LOG_TAG, "Subscribe failed with reason code = " + e.getReasonCode());
+                response.putBoolean("unsubscribed", false);
+                response.putString("error", e.getMessage());
+            }
+            return response;
         }
 
         private void publish(Message message) {
-            boolean published = false;
-            Bundle b = message.getData();
-            if (b != null) {
-                CharSequence cs = b.getCharSequence(TOPIC);
-                if (cs != null) {
-                    String topic = cs.toString().trim();
-                    if (!topic.isEmpty()) {
-                        cs = b.getCharSequence(MESSAGE);
-                        if (cs != null) {
-                            String m = cs.toString().trim();
-                            if (!m.isEmpty()) {
-                                published = publish(topic,m);
-                            }
-                        }
+            Bundle response = new Bundle();
+            Bundle data = message.getData();
+            if (data != null) {
+                String topic = data.getString(SISMO.MQTT.KEYS.TOPIC);
+                if (topic != null && !topic.isEmpty()) {
+                    String m = data.getString(SISMO.MQTT.KEYS.MESSAGE);
+                    if (m != null && !m.isEmpty()) {
+                        response = publish(topic,m);
                     }
                 }
             }
-            ReplytoClient(message.replyTo, message.what, published);
+            if(message.replyTo != null){
+                Message m = Message.obtain(null, message.what);
+                m.replyTo = messageHandler;
+                m.setData(response);
+                try {
+                    message.replyTo.send(m);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
-        private boolean publish(String topic, String message) {
-            boolean published = false;
-
+        private Bundle publish(String topic, String message) {
+            Bundle response = new Bundle();
             try {
                 MqttMessage mqttMessage = new MqttMessage();
                 mqttMessage.setPayload(message.getBytes());
-                Log.i(MainActivity.LOG_TAG, "Trying to publish message to " + topic);
+                Log.i(SISMO.LOG_TAG, "Trying to publish message to " + topic);
                 client.publish(topic, mqttMessage);
-                published = true;
+                Log.i(SISMO.LOG_TAG, "Message published");
+                response.putBoolean("published", true);
             } catch (MqttException e) {
-                Log.d(MainActivity.LOG_TAG, "Publish failed with reason code = " + e.getReasonCode());
-                published = false;
+                Log.d(SISMO.LOG_TAG, "Publish failed with reason code = " + e.getReasonCode());
+                response.putBoolean("published", false);
+                response.putString("error", e.getMessage());
             }
-            return published;
+            return response;
         }
 
         @Override
         public void connectionLost(Throwable throwable) {
-            Log.i(MainActivity.LOG_TAG, "Connection lost");
-            connectionState = CONNECTION_STATE.DISCONNECTED;
+            Log.i(SISMO.LOG_TAG, "Connection lost");
+            Log.i(SISMO.LOG_TAG, throwable.getMessage());
+            connectionState = SISMO.MQTT.CONNECTION_STATE.DISCONNECTED;
             delayReconnect();
         }
 
         @Override
         public void messageArrived(String topic, MqttMessage message) throws Exception {
-            Log.i(MainActivity.LOG_TAG, topic + ":" + message.toString());
+            Log.i(SISMO.LOG_TAG, topic + ":" + message.toString());
+            try{
+                JSONObject jsonMessage = new JSONObject(message.toString());
 
-            Context context = getBaseContext();
+                String type = jsonMessage.getString("type");
+                Log.i(SISMO.LOG_TAG,type);
+                int notificationId;
+                if(type.equals("response")) {
+                    notificationId = SISMO.MQTT.KEYS.RESPONSE_NOTIFICATION_ID;
+                }else{
+                    notificationId = SISMO.MQTT.KEYS.WARNING_NOTIFICATION_ID;
+                }
+                Context context = getBaseContext();
 
-            Log.d(MainActivity.LOG_TAG, "Mostrando notificacion");
+                Log.d(SISMO.LOG_TAG, "Mostrando notificacion");
 
-            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context);
-            notificationBuilder.setSmallIcon(R.drawable.ic_notification_white);
-            notificationBuilder.setSmallIcon(R.drawable.ic_notification_white);
-            notificationBuilder.setContentTitle(topic);
-            notificationBuilder.setContentText(message.toString());
-            notificationBuilder.setAutoCancel(true);
-            Intent resultIntent = new Intent(context, MainActivity.class);
+                NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context);
+                notificationBuilder.setSmallIcon(R.drawable.ic_notification_white);
+                notificationBuilder.setSmallIcon(R.drawable.ic_notification_white);
+                notificationBuilder.setContentTitle(topic);
+                notificationBuilder.setContentText(message.toString());
+                notificationBuilder.setAutoCancel(true);
 
-            PendingIntent resultPendingIntent =
-                    PendingIntent.getActivity(
-                            context,
-                            0,
-                            resultIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT
-                    );
+                notificationBuilder.setDefaults(Notification.DEFAULT_ALL);
+                Intent resultIntent = new Intent(context, MainActivity.class);
 
-            notificationBuilder.setContentIntent(resultPendingIntent);
+                PendingIntent resultPendingIntent = PendingIntent.getActivity(context, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-            NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                notificationBuilder.setContentIntent(resultPendingIntent);
 
-            notificationManager.notify((int) topics.get(topic), notificationBuilder.build());
-            if (intentAction != null) {
+                NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+                notificationManager.notify(notificationId, notificationBuilder.build());
+
                 Intent intent = new Intent();
-                intent.setAction(intentAction);
-                intent.putExtra(TOPIC, topic);
-                intent.putExtra(MESSAGE, message.toString());
-                intent.putExtra(NOTIFICATION_ID, (int)topics.get(topic));
+                intent.setAction(SISMO.MQTT.INTENT_ACTION_WARNING);
+                intent.putExtra(SISMO.MQTT.KEYS.TOPIC, topic);
+                intent.putExtra(SISMO.MQTT.KEYS.MESSAGE, message.toString());
+                intent.putExtra(SISMO.MQTT.KEYS.NOTIFICATION_ID, notificationId);
                 sendBroadcast(intent);
+            }catch (Exception ex){
+                System.out.println(ex.getMessage());
             }
-            Log.d(MainActivity.LOG_TAG, "Notificacion mostrada");
         }
 
         @Override

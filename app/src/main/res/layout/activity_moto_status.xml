@@ -12,7 +12,7 @@
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
         <android.support.design.widget.CollapsingToolbarLayout
-            android:id="@+id/collapsing_toolbar"
+            android:id="@+id/MotoStatusActivity_CollapsingToolbarLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fitsSystemWindows="true"
@@ -23,7 +23,7 @@
             app:layout_scrollFlags="scroll|exitUntilCollapsed">
 
             <ImageView
-                android:id="@+id/header"
+                android:id="@+id/MotoStatusActivity_ImageView_MotoImage"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:fitsSystemWindows="false"
@@ -32,7 +32,7 @@
                 android:src="@drawable/moto" />
 
             <ImageView
-                android:id="@+id/header2"
+                android:id="@+id/MotoStatusActivity_ImageView_Background"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:fitsSystemWindows="false"
@@ -40,7 +40,7 @@
                 app:layout_collapseMode="parallax"/>
 
             <android.support.v7.widget.Toolbar
-                android:id="@+id/anim_toolbar"
+                android:id="@+id/MotoStatusActivity_Toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
                 app:layout_collapseMode="pin"
@@ -63,8 +63,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Monitoring status:"
-                android:id="@+id/textViewLabelMonitoringStatus"
+                android:text="@string/TextOfMonitoringStatusTextView"
+                android:id="@+id/MotoStatusActivity_TextView_LabelMotonitoringStatus"
                 android:layout_alignParentTop="true"
                 android:layout_alignParentStart="true"
                 android:textSize="20dp"
@@ -75,17 +75,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Monitoring"
-                android:id="@+id/textViewMonitoringStatus"
+                android:id="@+id/MotoStatusActivity_TextView_MotonitoringStatus"
                 android:textSize="20dp"
                 android:layout_alignParentEnd="true"
-                android:layout_alignBaseline="@+id/textViewLabelMonitoringStatus" />
+                android:layout_alignBaseline="@+id/MotoStatusActivity_TextView_LabelMotonitoringStatus" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Safety lock:"
-                android:id="@+id/textViewLabelSafetyLock"
-                android:layout_below="@id/textViewLabelMonitoringStatus"
+                android:text="@string/TextOfSafetyLockStatusTextView"
+                android:id="@+id/MotoStatusActivity_TextView_LabelSafetyLockStatus"
+                android:layout_below="@id/MotoStatusActivity_TextView_LabelMotonitoringStatus"
                 android:textSize="20dp"
                 android:textStyle="bold"
                 android:layout_margin="16dp" />
@@ -94,18 +94,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Unlocked"
-                android:id="@+id/textViewSafetyLock"
+                android:id="@+id/MotoStatusActivity_TextView_SafetyLockStatus"
                 android:layout_alignParentTop="true"
-                android:layout_alignBaseline="@+id/textViewLabelSafetyLock"
+                android:layout_alignBaseline="@+id/MotoStatusActivity_TextView_LabelSafetyLockStatus"
                 android:textSize="20dp"
                 android:layout_alignParentRight="true" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Electrical flow:"
-                android:id="@+id/textViewLabelElectricalFlow"
-                android:layout_below="@id/textViewLabelSafetyLock"
+                android:text="@string/TextOfElectricalFlowStatusTextView"
+                android:id="@+id/MotoStatusActivity_TextView_LabelElectricalFlowStatus"
+                android:layout_below="@id/MotoStatusActivity_TextView_LabelSafetyLockStatus"
                 android:textSize="20dp"
                 android:textStyle="bold"
                 android:layout_margin="16dp" />
@@ -114,8 +114,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Unlocked"
-                android:id="@+id/textViewElectricalFlow"
-                android:layout_alignBaseline="@+id/textViewLabelElectricalFlow"
+                android:id="@+id/MotoStatusActivity_TextView_ElectricalFlowStatus"
+                android:layout_alignBaseline="@+id/MotoStatusActivity_TextView_LabelElectricalFlowStatus"
                 android:textSize="20dp"
                 android:layout_alignParentRight="true" />
 
@@ -123,8 +123,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Ubication:"
-                android:id="@+id/textViewLabelUbication"
-                android:layout_below="@id/textViewLabelElectricalFlow"
+                android:id="@+id/MotoStatusActivity_TextView_LabelUbication"
+                android:layout_below="@id/MotoStatusActivity_TextView_LabelElectricalFlowStatus"
                 android:textSize="20dp"
                 android:textStyle="bold"
                 android:layout_margin="16dp" />
@@ -133,21 +133,22 @@
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 style="?android:attr/buttonStyleSmall"
-                android:text="Get ubication"
-                android:layout_alignBaseline="@+id/textViewLabelUbication"
+                android:text="@string/TextOfGetUbicationButton"
+                android:layout_alignBaseline="@+id/MotoStatusActivity_TextView_LabelUbication"
                 android:onClick="onClickGetLocation"
-                android:id="@+id/button2"
+                android:id="@+id/MotoStatusActivity_Button_GetUbication"
                 android:layout_alignParentRight="true" />
 
             <Button
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Start monitoring"
-                android:id="@+id/button3"
-                android:layout_below="@id/textViewLabelUbication"
+                android:text="@string/TextOfStartMonitoringButton"
+                android:id="@+id/MotoStatusActivity_Button_StartMonitoring"
+                android:layout_below="@id/MotoStatusActivity_TextView_LabelUbication"
                 android:layout_alignParentStart="true"
                 android:layout_margin="0dp"
-                android:layout_marginTop="8dp" />
+                android:layout_marginTop="8dp"
+                android:onClick="onCLickButtonStartMonitoring"/>
 
 
         </RelativeLayout>

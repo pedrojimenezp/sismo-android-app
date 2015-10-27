@@ -4,7 +4,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:card_view="http://schemas.android.com/apk/res-auto"
     android:orientation="horizontal"
-    android:id="@+id/card_view"
+    android:id="@+id/MotoListItem_CardView_Moto"
     android:layout_gravity="center"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -15,8 +15,8 @@
     android:layout_marginStart="8dp"
     android:clickable="true"
     android:focusable="true"
-    android:onClick="onClickMotoItemList"
     android:foreground="?android:attr/selectableItemBackground">
+<!--android:onClick="onClickMotoItemList"-->
     <RelativeLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
         android:orientation="vertical"
@@ -30,8 +30,7 @@
             <ImageView
                 android:layout_width="match_parent"
                 android:layout_height="250dp"
-                android:id="@+id/imageView"
-                android:src="@drawable/moto"
+                android:id="@+id/MotoListItem_ImageView_MotoImage"
                 android:layout_alignWithParentIfMissing="false"
                 android:layout_alignParentTop="false"
                 android:layout_alignParentStart="false"
@@ -53,7 +52,7 @@
                     android:layout_height="wrap_content"
                     android:textAppearance="?android:attr/textAppearanceLarge"
                     android:text="Yamaha FZ"
-                    android:id="@+id/MotoBrand"
+                    android:id="@+id/MotoListItem_TextView_BrandAndLine"
                     android:textStyle="bold"
                     android:layout_centerVertical="true"
                     android:layout_alignParentStart="true"
@@ -63,12 +62,11 @@
                     style="?android:attr/borderlessButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="See status"
-                    android:id="@+id/button"
+                    android:text="@string/TextOfSeeStatusButton"
+                    android:id="@+id/MotoListItem_Button_SeeStatus"
                     android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
-                    android:textColor="@color/white"
-                    android:onClick="onClickSeeStatus"/>
+                    android:textColor="@color/white"/>
 
             </RelativeLayout>
 
@@ -106,7 +104,7 @@
                     android:layout_height="wrap_content"
                     android:textAppearance="?android:attr/textAppearanceMedium"
                     android:text="ABC 123"
-                    android:id="@+id/MotoPlate"
+                    android:id="@+id/MotoListItem_TextView_Plate"
                     android:layout_below="@+id/textView2"
                     android:layout_centerHorizontal="true" />
             </RelativeLayout>
@@ -129,7 +127,7 @@
                     android:layout_height="wrap_content"
                     android:textAppearance="?android:attr/textAppearanceMedium"
                     android:text="Blanca"
-                    android:id="@+id/MotoColor"
+                    android:id="@+id/MotoListItem_TextView_Color"
                     android:layout_marginLeft="4dp"
                     android:layout_centerHorizontal="true"
                     android:layout_below="@+id/textView3" />
@@ -143,28 +141,21 @@
             android:layout_alignParentStart="true"
             android:padding="0dp">
             <Button
+                android:id="@+id/MotoListItem_Button_Delete"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 style="?android:attr/borderlessButtonStyle"
-                android:text="Delete"
+                android:text="@string/TextOfDeleteMotoButton"
                 android:layout_marginRight="4dp"
                 android:textSize="14dp" />
-            <!--<Button
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                style="?android:attr/borderlessButtonStyle"
-                android:text="See information"
-                android:layout_marginLeft="4dp"
-                android:layout_marginRight="4dp"
-                android:textSize="12dp" />-->
             <Button
+                android:id="@+id/MotoListItem_Button_StartMonitoring"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 style="?android:attr/borderlessButtonStyle"
-                android:text="Start monitoring"
+                android:text="@string/TextOfStartMonitoringButton"
                 android:layout_marginLeft="4dp"
                 android:textAlignment="center"
                 android:textSize="14dp" />

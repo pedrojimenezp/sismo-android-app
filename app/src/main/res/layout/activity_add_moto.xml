@@ -27,7 +27,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
                 <ImageView
-                    android:id="@+id/MotoImageViewAddMoto"
+                    android:id="@+id/AddMotoActivity_ImageView_MotoImage"
                     android:layout_width="match_parent"
                     android:layout_height="250dp"
                     android:cropToPadding="false"
@@ -36,7 +36,7 @@
                 <Button
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Load image"
+                    android:text="@string/TextOfLoadImageButton"
                     android:layout_alignParentBottom="true"
                     android:layout_alignParentEnd="true"
                     android:layout_margin="8dp"
@@ -44,7 +44,7 @@
             </RelativeLayout>
 
             <android.support.design.widget.TextInputLayout
-                android:id="@+id/TextInputLayoutBrand"
+                android:id="@+id/AddMotoActivity_TextInputLayout_Mac"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="fill"
@@ -54,16 +54,37 @@
                 android:layout_marginBottom="8dp">
 
                 <EditText
-                    android:id="@+id/EditTextBrand"
+                    android:id="@+id/AddMotoActivity_EditText_Mac"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ems="10"
+                    android:hint="@string/mac"
+                    android:singleLine="true"
+                    android:inputType="textCapWords" />
+            </android.support.design.widget.TextInputLayout>
+
+            <android.support.design.widget.TextInputLayout
+                android:id="@+id/AddMotoActivity_TextInputLayout_Brand"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="fill"
+                android:layout_marginLeft="16dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp">
+
+                <EditText
+                    android:id="@+id/AddMotoActivity_EditText_Brand"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ems="10"
                     android:hint="@string/brand"
-                    android:singleLine="true" />
+                    android:singleLine="true"
+                    android:inputType="textCapWords"/>
             </android.support.design.widget.TextInputLayout>
 
             <android.support.design.widget.TextInputLayout
-                android:id="@+id/TextInputLayoutLine"
+                android:id="@+id/AddMotoActivity_TextInputLayout_Line"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="fill"
@@ -73,16 +94,17 @@
                 android:layout_marginBottom="8dp">
 
                 <EditText
-                    android:id="@+id/EditTextLine"
+                    android:id="@+id/AddMotoActivity_EditText_Line"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ems="10"
                     android:hint="@string/line"
-                    android:singleLine="true" />
+                    android:singleLine="true"
+                    android:inputType="textCapWords" />
             </android.support.design.widget.TextInputLayout>
 
             <android.support.design.widget.TextInputLayout
-                android:id="@+id/TextInputLayoutPlate"
+                android:id="@+id/AddMotoActivity_TextInputLayout_Model"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="fill"
@@ -92,16 +114,37 @@
                 android:layout_marginBottom="8dp">
 
                 <EditText
-                    android:id="@+id/EditTextPlate"
+                    android:id="@+id/AddMotoActivity_EditText_Model"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ems="10"
+                    android:hint="@string/model"
+                    android:singleLine="true"
+                    android:inputType="number" />
+            </android.support.design.widget.TextInputLayout>
+
+            <android.support.design.widget.TextInputLayout
+                android:id="@+id/AddMotoActivity_TextInputLayout_Plate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="fill"
+                android:layout_marginLeft="16dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp">
+
+                <EditText
+                    android:id="@+id/AddMotoActivity_EditText_Plate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ems="10"
                     android:hint="@string/plate"
-                    android:singleLine="true" />
+                    android:singleLine="true"
+                    android:inputType="textCapCharacters" />
             </android.support.design.widget.TextInputLayout>
 
             <android.support.design.widget.TextInputLayout
-                android:id="@+id/TextInputLayoutColor"
+                android:id="@+id/AddMotoActivity_TextInputLayout_Color"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="fill"
@@ -111,16 +154,17 @@
                 android:layout_marginBottom="8dp">
 
                 <EditText
-                    android:id="@+id/EditTextColor"
+                    android:id="@+id/AddMotoActivity_EditText_Color"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ems="10"
                     android:hint="@string/color"
-                    android:singleLine="true" />
+                    android:singleLine="true"
+                    android:inputType="textCapWords" />
             </android.support.design.widget.TextInputLayout>
 
             <android.support.design.widget.TextInputLayout
-                android:id="@+id/TextInputLayoutCylinderCapacity"
+                android:id="@+id/AddMotoActivity_TextInputLayout_CylinderCapacity"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="fill"
@@ -130,24 +174,25 @@
                 android:layout_marginBottom="8dp">
 
                 <EditText
-                    android:id="@+id/EditTextCylinderCapacity"
+                    android:id="@+id/AddMotoActivity_EditText_CylinderCapacity"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ems="10"
                     android:hint="@string/cylinder_capacity"
-                    android:singleLine="true" />
+                    android:singleLine="true"
+                    android:inputType="number" />
             </android.support.design.widget.TextInputLayout>
 
             <Button
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Update information"
-                android:id="@+id/buttonUpdateInformation"
+                android:text="@string/TextOfAddMotoButton"
+                android:id="@+id/AddMotoActivity_Button_AddMoto"
                 android:layout_marginLeft="16dp"
                 android:layout_marginRight="16dp"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="8dp"
-                />
+                android:onClick="onClickAddMotoButton"/>
 
 
         </LinearLayout>
