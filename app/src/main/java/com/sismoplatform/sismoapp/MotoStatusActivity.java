@@ -1,6 +1,5 @@
 package com.sismoplatform.sismoapp;
 
-import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -47,6 +46,7 @@ public class MotoStatusActivity extends AppCompatActivity {
     TextView TextView_SafetyLockStatus;
     TextView TextView_ElectricalFlowStatus;
     Button Button_StartMonitoring;
+    Button Button_GetPosition;
 
     private IntentFilter intentFilter = null;
     private PushReceiver pushReceiver;
@@ -66,9 +66,21 @@ public class MotoStatusActivity extends AppCompatActivity {
 
         Bundle extras = getIntent().getExtras();
         if(extras != null){
-            int index = extras.getInt("listIndex");
-
-            moto = SISMO.MotoList.get(index);
+            int index = extras.getInt("listIndex", -1);
+            if(index != -1){
+                moto = SISMO.MotoList.get(index);
+            }else{
+                String mac = extras.getString("mac", "");
+                if(!mac.isEmpty()){
+                    int length = SISMO.MotoList.size();
+                    for(int j=0; j<length; j++){
+                        if(SISMO.MotoList.get(j).Mac.equals(mac)){
+                            moto = SISMO.MotoList.get(j);
+                            break;
+                        }
+                    }
+                }
+            }
         }else{
             moto = null;
         }
@@ -93,10 +105,11 @@ public class MotoStatusActivity extends AppCompatActivity {
         TextView_SafetyLockStatus = (TextView) findViewById(R.id.MotoStatusActivity_TextView_SafetyLockStatus);
         TextView_ElectricalFlowStatus = (TextView) findViewById(R.id.MotoStatusActivity_TextView_ElectricalFlowStatus);
         Button_StartMonitoring = (Button) findViewById(R.id.MotoStatusActivity_Button_StartMonitoring);
+        Button_GetPosition = (Button) findViewById(R.id.MotoStatusActivity_Button_GetPosition);
 
         ImageView_Background.setBackgroundColor(Color.argb(150, 255, 0, 0));
         if(moto!=null){
-            this.setNamesFromMoto();
+            this.setStatusFromMoto();
             collapsingToolbarLayout.setTitle(moto.getBrandAndLine());
             ImageView_MotoImage.setImageBitmap(moto.BitmapImage);
             Palette.from(moto.BitmapImage).generate(new Palette.PaletteAsyncListener() {
@@ -108,9 +121,12 @@ public class MotoStatusActivity extends AppCompatActivity {
                     collapsingToolbarLayout.setContentScrimColor(vibrantColor);
                 }
             });
-
+            Button_StartMonitoring.setEnabled(true);
+            Button_GetPosition.setEnabled(true);
         }else {
             collapsingToolbarLayout.setTitle("Moto");
+            Button_StartMonitoring.setEnabled(false);
+            Button_GetPosition.setEnabled(false);
         }
     }
 
@@ -125,6 +141,7 @@ public class MotoStatusActivity extends AppCompatActivity {
     protected void onResume() {
         Log.i(SISMO.LOG_TAG, "MotoStatusActivity.onResumen");
         super.onResume();
+        SISMO.IsAppRunning = true;
         registerReceiver(pushReceiver, intentFilter);
     }
 
@@ -132,6 +149,7 @@ public class MotoStatusActivity extends AppCompatActivity {
     protected void onPause() {
         Log.i(SISMO.LOG_TAG, "MotoStatusActivity.onPause");
         super.onPause();
+        SISMO.IsAppRunning = false;
         unregisterReceiver(pushReceiver);
     }
 
@@ -198,15 +216,47 @@ public class MotoStatusActivity extends AppCompatActivity {
         }
     };
 
+    public void onCLickButtonGetPosition(View view) {
+        String action = "gp";
+        Messenger messenger = mqttServiceMessenger;
+        if(messenger != null){
+            Message message = Message.obtain(null,SISMO.MQTT.ACTIONS.PUBLISH);
+
+            String mqttTopic = "/messages/to/"+SISMO.Username+"/apps/motos/"+moto.Mac;
+            String replyTo = "/messages/to/"+SISMO.Username+"/apps/android/"+SISMO.DeviceId;
+            JSONObject json = new JSONObject();
+            try {
+                json.put("replyTo", replyTo);
+                json.put("action", action);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            Bundle data = new Bundle();
+
+            data.putString(SISMO.MQTT.KEYS.TOPIC, mqttTopic);
+            data.putString(SISMO.MQTT.KEYS.MESSAGE, json.toString());
+            message.setData(data);
+            message.replyTo = messageHandler;
+            Log.i(SISMO.LOG_TAG, "Sending message to publish");
+            try {
+                messenger.send(message);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }else{
+            Log.i(SISMO.LOG_TAG, "HomeActivity.mqttServiceMessenger is null");
+        }
+    }
+
     public void onCLickButtonStartMonitoring(View view) {
-        Log.i(SISMO.LOG_TAG, "Starting monitoring");
         CharSequence cs = Button_StartMonitoring.getText();
-        String action = "startMonitoring";
+        String action = "sm";
         if(cs != null){
             String text = cs.toString();
             Log.i(SISMO.LOG_TAG, text);
             if(!text.toLowerCase().equals("start monitoring")){
-                action = "endMonitoring";
+                action = "em";
             }
         }
         Messenger messenger = mqttServiceMessenger;
@@ -269,10 +319,10 @@ public class MotoStatusActivity extends AppCompatActivity {
         {
             String topic = i.getStringExtra(SISMO.MQTT.KEYS.TOPIC);
             String message = i.getStringExtra(SISMO.MQTT.KEYS.MESSAGE);
-            int notificationId = i.getIntExtra(SISMO.MQTT.KEYS.NOTIFICATION_ID, -1);
+            //int notificationId = i.getIntExtra(SISMO.MQTT.KEYS.NOTIFICATION_ID, -1);
 
-            NotificationManager mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            mNotifyMgr.cancel(notificationId);
+            //NotificationManager mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            //mNotifyMgr.cancel(notificationId);
 
             try {
                 JSONObject json = new JSONObject(message);
@@ -280,7 +330,7 @@ public class MotoStatusActivity extends AppCompatActivity {
                 if(type.equals("response")){
                     String mac = json.getString("mac");
                     String action = json.getString("action");
-                    if(action.equals("startMonitoring") ||  action.equals("endMonitoring")){
+                    if(action.equals("sm") ||  action.equals("em")){
                         JSONObject info = json.getJSONObject("info");
                         String monitoringStatus = info.getString("monitoringStatus");
                         String safetyLockStatus = info.getString("safetyLockStatus");
@@ -292,10 +342,25 @@ public class MotoStatusActivity extends AppCompatActivity {
                                 SISMO.MotoList.get(j).SafetyLockStaus = safetyLockStatus;
                                 SISMO.MotoList.get(j).ElectricalFlowStatus = electricalFlowStatus;
                                 moto = SISMO.MotoList.get(j);
-                                setNamesFromMoto();
+                                setStatusFromMoto();
                                 break;
                             }
                         }
+                    }else if(action.equals("gp")){
+                        JSONObject positions = json.getJSONObject("info");
+                        JSONObject parkingPosition = positions.getJSONObject("parkingPosition");
+                        JSONObject presentPosition = positions.getJSONObject("presentPosition");
+                        double latitude1 = parkingPosition.getDouble("latitude");
+                        double longitude1 = parkingPosition.getDouble("longitude");
+                        double latitude2 = presentPosition.getDouble("latitude");
+                        double longitude2 = presentPosition.getDouble("longitude");
+                        Intent intent = new Intent(MotoStatusActivity.this, MapsActivity.class);
+                        intent.putExtra("mac", mac);
+                        intent.putExtra("latitude1", latitude1);
+                        intent.putExtra("longitude1", longitude1);
+                        intent.putExtra("latitude2", latitude2);
+                        intent.putExtra("longitude2", longitude2);
+                        startActivity(intent);
                     }
                 }
             } catch (JSONException e) {
@@ -310,15 +375,33 @@ public class MotoStatusActivity extends AppCompatActivity {
         }
     }
 
-    public void setNamesFromMoto(){
-        TextView_MotonitoringStatus.setText(moto.MonitorinStatus);
-        TextView_SafetyLockStatus.setText(moto.SafetyLockStaus);
-        TextView_ElectricalFlowStatus.setText(moto.ElectricalFlowStatus);
+    public void setStatusFromMoto(){
+        Log.i(SISMO.LOG_TAG, "Setting names");
+        TextView_SafetyLockStatus.setText(moto.SafetyLockStaus+" ");
+        if(moto.SafetyLockStaus.equals("locked")){
+            TextView_SafetyLockStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_padlock_green, 0);
+        }else{
+            TextView_SafetyLockStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_padlock_red, 0);
+        }
+
+        TextView_ElectricalFlowStatus.setText(moto.ElectricalFlowStatus+" ");
+        if(moto.ElectricalFlowStatus.equals("locked")){
+            TextView_ElectricalFlowStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_padlock_green, 0);
+        }else{
+            TextView_ElectricalFlowStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_padlock_red, 0);
+        }
+
+        TextView_MotonitoringStatus.setText(moto.MonitorinStatus+" ");
         if(moto.MonitorinStatus.equals("on")){
             Button_StartMonitoring.setText("End monitoring");
+            Button_StartMonitoring.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_ex, 0, 0, 0);
+            TextView_MotonitoringStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_check, 0);
         }else{
             Button_StartMonitoring.setText("Start monitoring");
+            Button_StartMonitoring.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_check, 0, 0, 0);
+            TextView_MotonitoringStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_ex, 0);
         }
+
     }
 
 }

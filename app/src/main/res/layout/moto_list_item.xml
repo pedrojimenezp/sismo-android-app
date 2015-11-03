@@ -25,17 +25,7 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/RelativeLayoutStatus">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="250dp"
-                android:id="@+id/MotoListItem_ImageView_MotoImage"
-                android:layout_alignWithParentIfMissing="false"
-                android:layout_alignParentTop="false"
-                android:layout_alignParentStart="false"
-                android:scaleType="centerCrop" />
-
+            android:id="@+id/MotoListItem_RelativeLayout_Header">
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -45,7 +35,9 @@
                 android:paddingLeft="8dp"
                 android:paddingRight="8dp"
                 android:paddingTop="4dp"
-                android:paddingBottom="4dp">
+                android:paddingBottom="4dp"
+                android:id="@+id/MotoListItem_RelativeLayout_HeaderTitle">
+
 
                 <TextView
                     android:layout_width="match_parent"
@@ -64,15 +56,21 @@
                     android:layout_height="wrap_content"
                     android:text="@string/TextOfSeeStatusButton"
                     android:id="@+id/MotoListItem_Button_SeeStatus"
+                    android:drawableLeft="@drawable/ic_info_white"
                     android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
                     android:textColor="@color/white"/>
 
             </RelativeLayout>
 
-
-
-
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="250dp"
+                android:id="@+id/MotoListItem_ImageView_MotoImage"
+                android:layout_alignWithParentIfMissing="false"
+                android:layout_alignParentStart="false"
+                android:scaleType="centerCrop"
+                android:layout_below="@+id/MotoListItem_RelativeLayout_HeaderTitle" />
         </RelativeLayout>
 
 
@@ -82,8 +80,8 @@
             android:orientation="horizontal"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
-            android:id="@+id/LinearLayoutData"
-            android:layout_below="@+id/RelativeLayoutStatus"
+            android:id="@+id/MotoListItem_LinearLayout_Data"
+            android:layout_below="@+id/MotoListItem_RelativeLayout_Header"
             android:layout_alignParentStart="true">
             <RelativeLayout
                 android:layout_width="0dp"
@@ -136,8 +134,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/linearLayout2"
-            android:layout_below="@+id/LinearLayoutData"
+            android:id="@+id/MotoListItem_LinearLayout_Buttons"
+            android:layout_below="@+id/MotoListItem_LinearLayout_Data"
             android:layout_alignParentStart="true"
             android:padding="0dp">
             <Button
@@ -147,6 +145,7 @@
                 android:layout_weight="1"
                 style="?android:attr/borderlessButtonStyle"
                 android:text="@string/TextOfDeleteMotoButton"
+                android:drawableLeft="@drawable/ic_ex"
                 android:layout_marginRight="4dp"
                 android:textSize="14dp" />
             <Button
@@ -155,6 +154,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 style="?android:attr/borderlessButtonStyle"
+                android:drawableLeft="@drawable/ic_check"
                 android:text="@string/TextOfStartMonitoringButton"
                 android:layout_marginLeft="4dp"
                 android:textAlignment="center"

@@ -19,7 +19,7 @@ public class Moto {
     public String MonitorinStatus = "off";
     public String SafetyLockStaus = "unlocked";
     public String ElectricalFlowStatus = "unlocked";
-
+    public String GeneralStatus = "";
 
     public Moto(){
         this.Image = "";

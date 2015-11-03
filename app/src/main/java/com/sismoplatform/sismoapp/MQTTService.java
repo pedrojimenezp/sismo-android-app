@@ -13,6 +13,8 @@ import android.content.Context;
 import android.content.Intent;
 
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -349,7 +351,8 @@ public class MQTTService extends Service
                 MqttMessage mqttMessage = new MqttMessage();
                 mqttMessage.setPayload(message.getBytes());
                 Log.i(SISMO.LOG_TAG, "Trying to publish message to " + topic);
-                client.publish(topic, mqttMessage);
+                //client.publish(topic, mqttMessage);
+                client.publish(topic, mqttMessage.getPayload(), 1, false);
                 Log.i(SISMO.LOG_TAG, "Message published");
                 response.putBoolean("published", true);
             } catch (MqttException e) {
@@ -375,41 +378,156 @@ public class MQTTService extends Service
                 JSONObject jsonMessage = new JSONObject(message.toString());
 
                 String type = jsonMessage.getString("type");
+                String mac = jsonMessage.getString("mac");
+
+                Moto moto = null;
+                int length = SISMO.MotoList.size();
+                for(int j=0; j<length; j++){
+                    if(SISMO.MotoList.get(j).Mac.equals(mac)){
+                        moto = SISMO.MotoList.get(j);
+                        break;
+                    }
+                }
+
                 Log.i(SISMO.LOG_TAG,type);
                 int notificationId;
-                if(type.equals("response")) {
+                if (type.equals("response")) {
                     notificationId = SISMO.MQTT.KEYS.RESPONSE_NOTIFICATION_ID;
-                }else{
+                }else if (type.equals("warning")) {
                     notificationId = SISMO.MQTT.KEYS.WARNING_NOTIFICATION_ID;
+                }else{
+                    notificationId = SISMO.MQTT.KEYS.UPDATE_NOTIFICATION_ID;
                 }
-                Context context = getBaseContext();
 
-                Log.d(SISMO.LOG_TAG, "Mostrando notificacion");
+                if (SISMO.IsAppRunning){
+                    Log.d(SISMO.LOG_TAG, "Sending intent");
+                    Intent intent = new Intent();
+                    if (type.equals("response")) {
+                        intent.setAction(SISMO.MQTT.INTENT_ACTION_RESPONSE);
+                    }else if (type.equals("warning")) {
+                        intent.setAction(SISMO.MQTT.INTENT_ACTION_WARNING);
+                    }else{
+                        intent.setAction(SISMO.MQTT.INTENT_ACTION_UPDATE);
+                    }
 
-                NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context);
-                notificationBuilder.setSmallIcon(R.drawable.ic_notification_white);
-                notificationBuilder.setSmallIcon(R.drawable.ic_notification_white);
-                notificationBuilder.setContentTitle(topic);
-                notificationBuilder.setContentText(message.toString());
-                notificationBuilder.setAutoCancel(true);
+                    intent.putExtra(SISMO.MQTT.KEYS.TOPIC, topic);
+                    intent.putExtra(SISMO.MQTT.KEYS.MESSAGE, message.toString());
+                    sendBroadcast(intent);
+                }else{
+                    Context context = getBaseContext();
+                    NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context);
+                    Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(),
+                            R.drawable.ic_notification_white);;
+                    int smallIcon = R.drawable.ic_notification_white;
+                    String contentTitle = "New Notification";
+                    String contentText = "Text of notification";
+                    Intent resultIntent = new Intent(context, MainActivity.class);
+                    if(type.equals("response")){
+                        String action = jsonMessage.getString("action");
 
-                notificationBuilder.setDefaults(Notification.DEFAULT_ALL);
-                Intent resultIntent = new Intent(context, MainActivity.class);
 
-                PendingIntent resultPendingIntent = PendingIntent.getActivity(context, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                        if(action.equals("sm")){
+                            contentTitle = "Monitoring activated";
+                            largeIcon = BitmapFactory.decodeResource(context.getResources(),
+                                    R.drawable.ic_check);
+                            smallIcon = R.drawable.ic_check;
 
-                notificationBuilder.setContentIntent(resultPendingIntent);
+                            if(moto != null){
+                                contentText = "The device is now monitoring the motorcycle "+moto.getBrandAndLine()+" with plate " + moto.Plate;
+                            }
 
-                NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                            resultIntent = new Intent(context, MotoStatusActivity.class);
+                            resultIntent.putExtra("mac", mac);
+                        }else if(action.equals("em")){
+                            contentTitle = "Monitoring deactivated";
+                            largeIcon = BitmapFactory.decodeResource(context.getResources(),
+                                    R.drawable.ic_ex);
+                            smallIcon = R.drawable.ic_ex;
+                            if(moto != null){
+                                contentText = "The device is no longer monitoring the motorcycle "+moto.getBrandAndLine()+" with plate " + moto.Plate;
+                            }
 
-                notificationManager.notify(notificationId, notificationBuilder.build());
+                            resultIntent = new Intent(context, MotoStatusActivity.class);
+                            resultIntent.putExtra("mac", mac);
+                        }else if(action.equals("gp")){
+                            JSONObject positions = jsonMessage.getJSONObject("info");
+                            JSONObject parkingPosition = positions.getJSONObject("parkingPosition");
+                            JSONObject presentPosition = positions.getJSONObject("presentPosition");
+                            double latitude1 = parkingPosition.getDouble("latitude");
+                            double longitude1 = parkingPosition.getDouble("longitude");
+                            double latitude2 = presentPosition.getDouble("latitude");
+                            double longitude2 = presentPosition.getDouble("longitude");
+                            contentTitle = "Position received";
+                            largeIcon = BitmapFactory.decodeResource(context.getResources(),
+                                    R.drawable.ic_position);
+                            smallIcon = R.drawable.ic_position;
 
-                Intent intent = new Intent();
-                intent.setAction(SISMO.MQTT.INTENT_ACTION_WARNING);
-                intent.putExtra(SISMO.MQTT.KEYS.TOPIC, topic);
-                intent.putExtra(SISMO.MQTT.KEYS.MESSAGE, message.toString());
-                intent.putExtra(SISMO.MQTT.KEYS.NOTIFICATION_ID, notificationId);
-                sendBroadcast(intent);
+                            if(moto != null){
+                                contentText = "The motorcycle "+moto.getBrandAndLine()+" with plate " + moto.Plate + "has sent the next position\n"+
+                                        "Latitude: "+ String.valueOf(latitude2) + "\n" +
+                                        "Longitude: "+String.valueOf(longitude2);
+                            }
+
+                            resultIntent = new Intent(context, MapsActivity.class);
+                            resultIntent.putExtra("mac", mac);
+                            resultIntent.putExtra("latitude1", latitude1);
+                            resultIntent.putExtra("longitude1", longitude1);
+                            resultIntent.putExtra("latitude2", latitude2);
+                            resultIntent.putExtra("longitude2", longitude2);
+                        }
+
+                    }else if(type.equals("warning")){
+
+                    }else if (type.equals("update")) {
+                        JSONObject positions = jsonMessage.getJSONObject("info");
+                        JSONObject parkingPosition = positions.getJSONObject("parkingPosition");
+                        JSONObject presentPosition = positions.getJSONObject("presentPosition");
+                        double latitude1 = parkingPosition.getDouble("latitude");
+                        double longitude1 = parkingPosition.getDouble("longitude");
+                        double latitude2 = presentPosition.getDouble("latitude");
+                        double longitude2 = presentPosition.getDouble("longitude");
+                        contentTitle = "Position received";
+                        largeIcon = BitmapFactory.decodeResource(context.getResources(),
+                                R.drawable.ic_position);
+                        smallIcon = R.drawable.ic_position;
+
+                        if(moto != null){
+                            contentText = "The motorcycle "+moto.getBrandAndLine()+" with plate " + moto.Plate + "has sent the next position\n"+
+                                    "Latitude: "+ String.valueOf(latitude2) + "\n" +
+                                    "Longitude: "+String.valueOf(longitude2);
+                        }
+
+                        resultIntent = new Intent(context, MapsActivity.class);
+                        resultIntent.putExtra("mac", mac);
+                        resultIntent.putExtra("latitude1", latitude1);
+                        resultIntent.putExtra("longitude1", longitude1);
+                        resultIntent.putExtra("latitude2", latitude2);
+                        resultIntent.putExtra("longitude2", longitude2);
+                    }
+
+                    Log.d(SISMO.LOG_TAG, "Mostrando notificacion");
+
+                    notificationBuilder.setSmallIcon(smallIcon);
+                    notificationBuilder.setLargeIcon(largeIcon);
+                    notificationBuilder.setContentTitle(contentTitle);
+                    notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(contentText));
+                    //notificationBuilder.setContentText(contentText);
+                    notificationBuilder.setAutoCancel(true);
+
+                    notificationBuilder.setDefaults(Notification.DEFAULT_ALL);
+
+
+                    resultIntent.putExtra("mac", mac);
+                    resultIntent.putExtra("type", type);
+
+                    PendingIntent resultPendingIntent = PendingIntent.getActivity(context, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+                    notificationBuilder.setContentIntent(resultPendingIntent);
+
+                    NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+                    notificationManager.notify(notificationId, notificationBuilder.build());
+                }
             }catch (Exception ex){
                 System.out.println(ex.getMessage());
             }

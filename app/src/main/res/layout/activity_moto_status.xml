@@ -135,9 +135,10 @@
                 style="?android:attr/buttonStyleSmall"
                 android:text="@string/TextOfGetUbicationButton"
                 android:layout_alignBaseline="@+id/MotoStatusActivity_TextView_LabelUbication"
-                android:onClick="onClickGetLocation"
-                android:id="@+id/MotoStatusActivity_Button_GetUbication"
-                android:layout_alignParentRight="true" />
+                android:onClick="onCLickButtonGetPosition"
+                android:id="@+id/MotoStatusActivity_Button_GetPosition"
+                android:layout_alignParentRight="true"
+                android:drawableLeft="@drawable/ic_position"/>
 
             <Button
                 android:layout_width="match_parent"

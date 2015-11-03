@@ -13,6 +13,9 @@ import java.util.logging.ConsoleHandler;
  * Created by pedro on 14/10/15.
  */
 public final class SISMO {
+
+    public static boolean IsAppRunning = false;
+
     public static String DeviceId = "";
     public static String AccessToken = "";
     public static String RefreshToken = "";
@@ -32,6 +35,7 @@ public final class SISMO {
 
         public static final String INTENT_ACTION_WARNING = "com.sismoplatform.sismoapp.mqtt.motoWarning";
         public static final String INTENT_ACTION_RESPONSE = "com.sismoplatform.sismoapp.mqtt.motoResponse";
+        public static final String INTENT_ACTION_UPDATE = "com.sismoplatform.sismoapp.mqtt.motoUpdate";
 
 
         public static class ACTIONS {
@@ -58,6 +62,7 @@ public final class SISMO {
 
             public static final int RESPONSE_NOTIFICATION_ID = 0;
             public static final int WARNING_NOTIFICATION_ID = 1;
+            public static final int UPDATE_NOTIFICATION_ID = 2;
         };
     }
 

@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import org.json.JSONException;
@@ -61,9 +62,22 @@ public class MotosAdapter extends RecyclerView.Adapter<MotosAdapter.ViewHolder> 
 
         if(moto.MonitorinStatus.equals("on")){
             viewHolder.Button_StartMonitoring.setText("End monitoring");
+            viewHolder.Button_StartMonitoring.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_ex, 0, 0, 0);
         }else{
             viewHolder.Button_StartMonitoring.setText("Start monitoring");
+            viewHolder.Button_StartMonitoring.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_check, 0, 0, 0);
         }
+
+        if(moto.GeneralStatus.equals("safe")){
+            viewHolder.RelativeLayout_HeaderTitle.setBackgroundResource(R.color.green);
+        }else if(moto.GeneralStatus.equals("warning")){
+            viewHolder.RelativeLayout_HeaderTitle.setBackgroundResource(R.color.orange);
+        }else if(moto.GeneralStatus.equals("danger")){
+            viewHolder.RelativeLayout_HeaderTitle.setBackgroundResource(R.color.red_dark);
+        }else{
+            viewHolder.RelativeLayout_HeaderTitle.setBackgroundResource(R.color.primary);
+        }
+
     }
 
     @Override
@@ -74,6 +88,7 @@ public class MotosAdapter extends RecyclerView.Adapter<MotosAdapter.ViewHolder> 
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         public Context context;
         public Moto MotoObject;
+        public RelativeLayout RelativeLayout_HeaderTitle;
         public TextView TextView_BrandAndLine;
         public TextView TextView_Plate;
         public TextView TextView_Color;
@@ -84,36 +99,41 @@ public class MotosAdapter extends RecyclerView.Adapter<MotosAdapter.ViewHolder> 
 
         public ViewHolder(View itemView) {
             super(itemView);
+            RelativeLayout_HeaderTitle = (RelativeLayout) itemView.findViewById(R.id.MotoListItem_RelativeLayout_HeaderTitle);
             TextView_BrandAndLine = (TextView) itemView.findViewById(R.id.MotoListItem_TextView_BrandAndLine);
             TextView_Plate = (TextView) itemView.findViewById(R.id.MotoListItem_TextView_Plate);
             TextView_Color = (TextView) itemView.findViewById(R.id.MotoListItem_TextView_Color);
             ImageView_MotoImage = (ImageView) itemView.findViewById(R.id.MotoListItem_ImageView_MotoImage);
 
             Button_SeeStatus = (Button)itemView.findViewById(R.id.MotoListItem_Button_SeeStatus);
+
             Button_SeeStatus.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    Log.i(SISMO.LOG_TAG, "Button_SeeStatus.OnClick");
                     int position = getAdapterPosition();
                     Intent intent = new Intent(context, MotoStatusActivity.class);
                     intent.putExtra("listIndex", position);
-                    context.startActivity(intent);
+                    activity.startActivity(intent);
                 }
             });
 
             Button_StartMonitoring = (Button)itemView.findViewById(R.id.MotoListItem_Button_StartMonitoring);
+
             Button_StartMonitoring.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     Log.i(SISMO.LOG_TAG, "Starting monitoring");
                     CharSequence cs = Button_StartMonitoring.getText();
-                    String action = "startMonitoring";
+                    String action = "sm";
                     if(cs != null){
                         String text = cs.toString();
                         Log.i(SISMO.LOG_TAG, text);
                         if(!text.toLowerCase().equals("start monitoring")){
-                            action = "endMonitoring";
+                            action = "em";
                         }
                     }
+
                     HomeActivity ha = ((HomeActivity)activity);
                     Messenger messenger = ha.mqttServiceMessenger;
                     if(messenger != null){
