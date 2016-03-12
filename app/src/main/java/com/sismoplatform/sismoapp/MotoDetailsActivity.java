@@ -1,16 +1,11 @@
 package com.sismoplatform.sismoapp;
 
-import android.content.Intent;
-import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.net.Uri;
-import android.provider.MediaStore;
+import android.app.ProgressDialog;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.graphics.Palette;
 import android.support.v7.widget.Toolbar;
-import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -19,7 +14,9 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import java.io.ByteArrayOutputStream;
+import org.json.JSONObject;
+
+import java.net.ConnectException;
 
 public class MotoDetailsActivity extends AppCompatActivity {
     int vibrantColor = R.color.primary;
@@ -35,8 +32,6 @@ public class MotoDetailsActivity extends AppCompatActivity {
 
     Moto moto;
 
-    String base64EncodedImage;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.i(SISMO.LOG_TAG, "MotoDetailsActivity.onCreate");
@@ -44,9 +39,11 @@ public class MotoDetailsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_moto_details);
 
         Bundle extras = getIntent().getExtras();
-        int index = extras.getInt("listIndex");
+        if(extras != null){
+            int index = extras.getInt("listIndex");
+            moto = SISMO.MotoList.get(index);
+        }
 
-        moto = SISMO.MotoList.get(index);
 
         final Toolbar toolbar = (Toolbar) findViewById(R.id.anim_toolbar);
 
@@ -92,7 +89,7 @@ public class MotoDetailsActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_moto_details, menu);
+        //getMenuInflater().inflate(R.menu.menu_moto_details, menu);
         return true;
     }
 
@@ -101,57 +98,111 @@ public class MotoDetailsActivity extends AppCompatActivity {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+        /*int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
-        }
+        }*/
         return super.onOptionsItemSelected(item);
     }
 
-    public void onClickLoadImageButton(View view) {
-        Log.i(SISMO.LOG_TAG,"LoadImageButton click");
-        Intent galleryIntent = new Intent(Intent.ACTION_PICK,
-                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        // Start the Intent
-        startActivityForResult(galleryIntent, 0);
+    public void onClickUpdateMotoButton(View view) {
+        Log.i(SISMO.LOG_TAG, "Click");
 
+        String mac = EditText_Mac.getText().toString();
+        String brand = EditText_Brand.getText().toString();
+        String line = EditText_Line.getText().toString();
+        String stringModel = EditText_Model.getText().toString();
+        String plate = EditText_Plate.getText().toString();
+        String color = EditText_Color.getText().toString();
+        String stringCylinderCapacity = EditText_CylinderCapacity.getText().toString();
+
+        Log.i(SISMO.LOG_TAG, "Mac: " + mac);
+        Log.i(SISMO.LOG_TAG, "Brand: " + brand);
+        Log.i(SISMO.LOG_TAG, "Line: " + line);
+        Log.i(SISMO.LOG_TAG, "Model: " + stringModel);
+        Log.i(SISMO.LOG_TAG, "Plate: " + plate);
+        Log.i(SISMO.LOG_TAG, "Color: " + color);
+        Log.i(SISMO.LOG_TAG, "Cylinder capaicty: " + stringCylinderCapacity);
+        //System.out.println(base64EncodedImage);
+        if(!brand.isEmpty() && !line.isEmpty() && !stringModel.isEmpty() &&
+                !plate.isEmpty() && !color.isEmpty() && !stringCylinderCapacity.isEmpty()){
+            Log.i(SISMO.LOG_TAG, "Updating moto");
+            String bodyParams = "mac="+mac+"&brand="+brand+"&line="+line+"&model="+stringModel+"&plate="+
+                        plate+"&color="+color+"&cylinderCapacity="+stringCylinderCapacity;
+            UpdateMotos updateMoto = new UpdateMotos();
+            updateMoto.execute(moto.Mac, bodyParams);
+        }else{
+            Toast toast = Toast.makeText(getApplicationContext(), "Necesitas llenar todos los campos", Toast.LENGTH_SHORT);
+            toast.show();
+        }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        try {
-            if (requestCode == 0 && resultCode == RESULT_OK && data != null) {
-                Uri selectedImage = data.getData();
 
-                String[] filePathColumn = { MediaStore.Images.Media.DATA };
+    public class UpdateMotos extends AsyncTask<String, Void, String> {
+        ProgressDialog pDialog;
 
-                Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null, null, null);
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            pDialog = new ProgressDialog(MotoDetailsActivity.this);
+            pDialog.setMessage("Actualizando datos de la moto, por favor espere.");
+            pDialog.setCancelable(false);
+            pDialog.show();
 
-                cursor.moveToFirst();
-                int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
-                String path = cursor.getString(columnIndex);
-                cursor.close();
-
-                Bitmap bitmap = BitmapFactory.decodeFile(path);
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos); //bm is the bitmap object
-                byte[] b = baos.toByteArray();
-                base64EncodedImage = Base64.encodeToString(b, Base64.URL_SAFE);
-
-                ImageView_MotoImage.setImageBitmap(bitmap);
-            } else {
-                Toast.makeText(this, "You haven't picked an image from galery",
-                        Toast.LENGTH_LONG).show();
-                this.base64EncodedImage = "";
-            }
-        } catch (Exception e) {
-            Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG)
-                    .show();
         }
 
+        @Override
+        protected String doInBackground(String... params) {
+            try {
+                String mac = params[0];
+                String url = SISMO.SISMO_API_SERVER_HOST+"/api/v1/motos/"+mac;
+                HTTPClient httpClient = new HTTPClient(url);
+                //httpClient.url = "http://www.google.com/search?q=mkyong";
+                httpClient.setMethod("PUT");
+
+                httpClient.addParams(params[1]);
+                String response = httpClient.makeRequest();
+                System.out.println("Response: "+response);
+
+                JSONObject jsonObj = new JSONObject(response);
+                String responseStatus = jsonObj.getString("status");
+                return responseStatus;
+            } catch (ConnectException e1) {
+                System.out.println(e1.toString());
+                return "Connection error";
+            } catch (Exception e2){
+                System.out.println(e2.toString());
+                return "ANOTHER_ERROR";
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            if (pDialog.isShowing()) {
+                pDialog.dismiss();
+            }
+            Toast toast;
+            switch (result) {
+                case "Ok" :
+                    Toast.makeText(MotoDetailsActivity.this, "Datos actualizados", Toast.LENGTH_SHORT).show();
+                    break;
+                case "Bad request" :
+                    Toast.makeText(MotoDetailsActivity.this, "Bad request", Toast.LENGTH_SHORT).show();
+                    break;
+                case "Unauthorized" :
+                    Toast.makeText(MotoDetailsActivity.this, "Invalid access token", Toast.LENGTH_SHORT).show();
+                    break;
+                case "Connection error" :
+                    Toast.makeText(MotoDetailsActivity.this, "Error tratando de conectarse con el servidor", Toast.LENGTH_SHORT).show();
+                    break;
+                case "Another error":
+                    Toast.makeText(MotoDetailsActivity.this, "Algo salio mal", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        }
     }
 
 }

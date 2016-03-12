@@ -33,11 +33,10 @@ public class MainActivity extends AppCompatActivity {
             editor.apply();
         }
 
-        SISMO.AccessToken = this.sharedPreferences.getString("accessToken", "");
-        SISMO.RefreshToken = this.sharedPreferences.getString("refreshToken", "");
+        SISMO.UserId = this.sharedPreferences.getString("userId", "");
         SISMO.Username = this.sharedPreferences.getString("username", "");
 
-        if(SISMO.AccessToken != ""){
+        if(SISMO.UserId != ""){
             Handler mHandler = new Handler();
             mHandler.postDelayed(new Runnable() {
                 @Override
@@ -56,7 +55,6 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(intent);
                     finish();
                 }
-
             }, 1000);
         }
     }

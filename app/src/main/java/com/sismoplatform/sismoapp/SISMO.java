@@ -17,8 +17,7 @@ public final class SISMO {
     public static boolean IsAppRunning = false;
 
     public static String DeviceId = "";
-    public static String AccessToken = "";
-    public static String RefreshToken = "";
+    public static String UserId = "";
     public static String Username = "";
     public static ArrayList<Moto> MotoList = new ArrayList<Moto>();
 
@@ -26,16 +25,16 @@ public final class SISMO {
 
     public static final String LOG_TAG = "SisMo";
 
-    public static final String SISMO_API_SERVER_HOST = "192.168.1.184";
-    public static final String SISMO_API_SERVER_PORT = "4000";
+    public static final String SISMO_API_SERVER_HOST = "https://web-sismo.herokuapp.com";
+    //public static final String SISMO_API_SERVER_HOST = "http://192.168.1.184:4000";
 
     public static class MQTT{
-        public static final String SERVER_HOST = "192.168.1.184";
+        public static final String SERVER_HOST = "test.mosquitto.org";
         public static final String SERVER_PORT = "1883";
 
-        public static final String INTENT_ACTION_WARNING = "com.sismoplatform.sismoapp.mqtt.motoWarning";
         public static final String INTENT_ACTION_RESPONSE = "com.sismoplatform.sismoapp.mqtt.motoResponse";
-        public static final String INTENT_ACTION_UPDATE = "com.sismoplatform.sismoapp.mqtt.motoUpdate";
+        public static final String INTENT_ACTION_MESSAGE = "com.sismoplatform.sismoapp.mqtt.motoMessage";
+        public static final String INTENT_MOTOS_UPDATED = "com.sismoplatform.sismoapp.mqtt.motosUpdated";
 
 
         public static class ACTIONS {
@@ -47,38 +46,19 @@ public final class SISMO {
             public static final int UNSUBSCRIBE_TO_MOTOS_TOPICS = 5;
         };
 
-        public static enum CONNECTION_STATE {
-            DISCONNECTED,
-            CONNECTING,
-            CONNECTED
+        public static class CONNECTION_STATE {
+            public static final int DISCONNECTED = 0;
+            public static final int CONNECTING = 1;
+            public static final int CONNECTED = 2;
         };
 
         public static class KEYS {
             public static final String TOPIC = "topic";
             public static final String MESSAGE = "message";
-            public static final String NOTIFICATION_ID = "notificationId";
-            public static final String STATUS = "status";
-            public static final String DESCRIPTION = "description";
+            public static final String QOS = "qos";
 
             public static final int RESPONSE_NOTIFICATION_ID = 0;
-            public static final int WARNING_NOTIFICATION_ID = 1;
-            public static final int UPDATE_NOTIFICATION_ID = 2;
+            public static final int MESSAGE_NOTIFICATION_ID = 1;
         };
-    }
-
-    public static void SendMessage(Messenger receiver, int type, Bundle data) {
-        if (receiver != null) {
-            Message reply = Message.obtain(null, type);
-            reply.setData(data);
-            try {
-                Log.i(SISMO.LOG_TAG, "Sending message to receiver");
-                receiver.send(reply);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-                System.out.println(e.getMessage());
-            }
-        }else{
-            Log.i(SISMO.LOG_TAG, "Receiver is null");
-        }
     }
 }

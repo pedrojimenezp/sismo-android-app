@@ -54,9 +54,8 @@
                     style="?android:attr/borderlessButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/TextOfSeeStatusButton"
-                    android:id="@+id/MotoListItem_Button_SeeStatus"
-                    android:drawableLeft="@drawable/ic_info_white"
+                    android:text="@string/TextOfUpdateDataButton"
+                    android:id="@+id/MotoListItem_Button_UpdateData"
                     android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
                     android:textColor="@color/white"/>
@@ -145,7 +144,7 @@
                 android:layout_weight="1"
                 style="?android:attr/borderlessButtonStyle"
                 android:text="@string/TextOfDeleteMotoButton"
-                android:drawableLeft="@drawable/ic_ex"
+                android:drawableLeft="@drawable/ic_ex_red"
                 android:layout_marginRight="4dp"
                 android:textSize="14dp" />
             <Button
@@ -154,7 +153,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 style="?android:attr/borderlessButtonStyle"
-                android:drawableLeft="@drawable/ic_check"
+                android:drawableLeft="@drawable/ic_check_green"
                 android:text="@string/TextOfStartMonitoringButton"
                 android:layout_marginLeft="4dp"
                 android:textAlignment="center"

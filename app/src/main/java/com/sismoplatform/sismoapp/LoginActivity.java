@@ -17,6 +17,7 @@ import android.widget.Toast;
 import org.json.JSONObject;
 
 import java.net.ConnectException;
+import java.util.ArrayList;
 
 public class LoginActivity extends AppCompatActivity {
     String username = "";
@@ -28,23 +29,16 @@ public class LoginActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_login, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -59,9 +53,14 @@ public class LoginActivity extends AppCompatActivity {
             params = "Basic "+params;
             new Login().execute(params);
         }else{
-            Toast toas = Toast.makeText(this, "Yous must to insert unername and password", Toast.LENGTH_SHORT);
+            Toast toas = Toast.makeText(this, "Debe ingresar un usuario y una contraseña", Toast.LENGTH_SHORT);
             toas.show();
         }
+    }
+
+    public void onClickLaunchSignupActivityButton(View view) {
+        Intent i = new Intent(LoginActivity.this, SignupActivity.class);
+        startActivity(i);
     }
 
     public class Login extends AsyncTask<String, Void, String> {
@@ -72,7 +71,7 @@ public class LoginActivity extends AppCompatActivity {
             super.onPreExecute();
             // Showing progress dialog
             progressDialog = new ProgressDialog(LoginActivity.this);
-            progressDialog.setMessage("Loging in, Please wait...");
+            progressDialog.setMessage("Iniciando sesion, por favor espere...");
             progressDialog.setCancelable(false);
             progressDialog.show();
 
@@ -81,11 +80,11 @@ public class LoginActivity extends AppCompatActivity {
         @Override
         protected String doInBackground(String... params) {
             try {
-                HTTPClient httpClient = new HTTPClient("http://192.168.1.184:4000/api/v1/access-token");
+                HTTPClient httpClient = new HTTPClient(SISMO.SISMO_API_SERVER_HOST+"/api/v1/login");
 
                 String basicToken = params[0];
 
-                httpClient.setMethod("GET");
+                httpClient.setMethod("POST");
                 httpClient.addHeader("authorization", basicToken);
                 String response = httpClient.makeRequest();
                 System.out.println(response);
@@ -95,17 +94,16 @@ public class LoginActivity extends AppCompatActivity {
                 String responseStatus = jsonObj.getString("status");
                 if(responseCode == 200) {
                     JSONObject result = jsonObj.getJSONObject("result");
-                    JSONObject tokens = result.getJSONObject("tokens");
-                    String accessToken = tokens.getString("accessToken");
-                    String refreshToken = tokens.getString("refreshToken");
+                    JSONObject user = result.getJSONObject("user");
+                    String userId = user.getString("_id");
+
                     SharedPreferences sp = getSharedPreferences(SISMO.SHARED_PREFERENCES, Context.MODE_PRIVATE);
                     SharedPreferences.Editor editor = sp.edit();
-                    editor.putString("accessToken", accessToken);
-                    editor.putString("refreshToken", refreshToken);
+                    editor.putString("userId", userId);
                     editor.putString("username", username);
                     editor.apply();
-                    SISMO.AccessToken = accessToken;
-                    SISMO.RefreshToken = refreshToken;
+                    SISMO.MotoList = new ArrayList<>();
+                    SISMO.UserId = userId;
                     SISMO.Username = username;
                 }
                 return responseStatus;
@@ -132,19 +130,19 @@ public class LoginActivity extends AppCompatActivity {
                     finish();
                     break;
                 case "Bad request" :
-                    toast = Toast.makeText(getApplicationContext(), "You must to send an username and password", Toast.LENGTH_SHORT);
+                    toast = Toast.makeText(getApplicationContext(), "Debes enviar un usuaro y una contraseña", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
                 case "Unauthorized" :
-                    toast = Toast.makeText(getApplicationContext(), "Incorrect username or password", Toast.LENGTH_SHORT);
+                    toast = Toast.makeText(getApplicationContext(), "Usuario o contraseña incorrectos", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
                 case "Connection error" :
-                    toast = Toast.makeText(getApplicationContext(), "Error trying to connect to the server", Toast.LENGTH_SHORT);
+                    toast = Toast.makeText(getApplicationContext(), "Error tratando de conectrse con el servidor", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
                 case "Another error" :
-                    toast = Toast.makeText(getApplicationContext(), "Something was wrong", Toast.LENGTH_SHORT);
+                    toast = Toast.makeText(getApplicationContext(), "Algo salio mal", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
             }

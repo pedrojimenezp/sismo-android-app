@@ -59,8 +59,7 @@
                     android:layout_height="wrap_content"
                     android:ems="10"
                     android:hint="@string/mac"
-                    android:singleLine="true"
-                    android:inputType="textCapWords" />
+                    android:singleLine="true" />
             </android.support.design.widget.TextInputLayout>
 
             <android.support.design.widget.TextInputLayout

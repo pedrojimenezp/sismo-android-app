@@ -16,10 +16,10 @@ public class Moto {
     public int Model;
     public String Color;
     public int CylinderCapacity;
-    public String MonitorinStatus = "off";
-    public String SafetyLockStaus = "unlocked";
-    public String ElectricalFlowStatus = "unlocked";
-    public String GeneralStatus = "";
+    public String MonitorinStatus = "unknown";
+    public String SafetyLockStaus = "unknown";
+    public String ElectricalFlowStatus = "unknown";
+    //public String ConnectionStatus = "unknown";
 
     public Moto(){
         this.Image = "";

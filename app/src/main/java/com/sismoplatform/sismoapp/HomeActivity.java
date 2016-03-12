@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -17,6 +18,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -30,7 +32,6 @@ import android.widget.Toast;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.ConnectException;
@@ -49,12 +50,10 @@ public class HomeActivity extends AppCompatActivity {
     public Context applicationContext;
     public Activity activity;
 
-    private RecyclerView recyclerView;
-    private RecyclerView.Adapter adapter;
+    public RecyclerView recyclerView;
+    public RecyclerView.Adapter adapter;
 
     private boolean register;
-
-    MqttClient client;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,28 +74,19 @@ public class HomeActivity extends AppCompatActivity {
         recyclerView.setItemAnimator(new DefaultItemAnimator());
 
         startService(new Intent(this, MQTTService.class));
-
-        intentFilter = new IntentFilter();
-        intentFilter.addAction(SISMO.MQTT.INTENT_ACTION_WARNING);
-        intentFilter.addAction(SISMO.MQTT.INTENT_ACTION_RESPONSE);
-
-        pushReceiver = new PushReceiver();
-        registerReceiver(pushReceiver, intentFilter);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
         Log.i(SISMO.LOG_TAG, "HomeActivity.onStart");
-        if(SISMO.MotoList != null && SISMO.MotoList.size() > 0){
-            adapter = new MotosAdapter(R.layout.moto_list_item, getApplicationContext(), this);
-            recyclerView.setAdapter(adapter);
-
-        }else {
-            GetMotos getMotos = new GetMotos();
-            getMotos.execute();
-        }
         bindService(new Intent(this, MQTTService.class), serviceConnection, 0);
+        if(SISMO.MotoList != null && SISMO.MotoList.size() > 0){
+            Log.i(SISMO.LOG_TAG, "Motos are loaded, render the adapter");
+            Log.i(SISMO.LOG_TAG, String.valueOf(SISMO.MotoList.size()));
+            adapter = new MotosAdapter(R.layout.moto_list_item, HomeActivity.this, this);
+            recyclerView.setAdapter(adapter);
+        }
     }
 
     @Override
@@ -104,6 +94,12 @@ public class HomeActivity extends AppCompatActivity {
         super.onResume();
         Log.i(SISMO.LOG_TAG, "HomeActivity.onResumen");
         SISMO.IsAppRunning = true;
+        intentFilter = new IntentFilter();
+        intentFilter.addAction(SISMO.MQTT.INTENT_ACTION_MESSAGE);
+        intentFilter.addAction(SISMO.MQTT.INTENT_ACTION_RESPONSE);
+        intentFilter.addAction(SISMO.MQTT.INTENT_MOTOS_UPDATED);
+
+        pushReceiver = new PushReceiver();
         registerReceiver(pushReceiver, intentFilter);
     }
 
@@ -137,8 +133,8 @@ public class HomeActivity extends AppCompatActivity {
         } else if(id == R.id.action_logout){
             SharedPreferences sp = getSharedPreferences(SISMO.SHARED_PREFERENCES, Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sp.edit();
-            editor.remove("accessToken");
-            editor.remove("refreshToken");
+            editor.remove("userId");
+            editor.remove("username");
             editor.apply();
             Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
             startActivity(intent);
@@ -154,15 +150,15 @@ public class HomeActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    /*
-    Methods to manage MQTT Service
-     */
-
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName arg0, IBinder binder){
             Log.i(SISMO.LOG_TAG, "HomeActivity.ServiceConnection.onServiceConnected");
             mqttServiceMessenger = new Messenger(binder);
+            if(SISMO.MotoList != null && SISMO.MotoList.size() > 0){
+                adapter = new MotosAdapter(R.layout.moto_list_item, HomeActivity.this, activity);
+                recyclerView.setAdapter(adapter);
+            }
         }
 
         @Override
@@ -176,27 +172,19 @@ public class HomeActivity extends AppCompatActivity {
         public void handleMessage(Message msg)
         {
             Log.i(SISMO.LOG_TAG, "HomeActivity.MessageHandler.handleMessage");
-            switch (msg.what)
-            {
+            switch (msg.what) {
                 case SISMO.MQTT.ACTIONS.SUBSCRIBE: break;
                 case SISMO.MQTT.ACTIONS.PUBLISH: {
                     Bundle data = msg.getData();
                     Boolean status = data.getBoolean("published");
                     if(status){
-                        Toast.makeText(getApplicationContext(), "Message sent to the moto.", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(getApplicationContext(), "Mensaje enviado a la moto.", Toast.LENGTH_SHORT).show();
                     }else{
                         String error = data.getString("error");
-                        Toast.makeText(getApplicationContext(), "The message couldn't be sent cant because this error:"+ error, Toast.LENGTH_LONG).show();
+                        Toast.makeText(getApplicationContext(), "El mensaje no pudo ser enviado a la moto.\nError:"+ error, Toast.LENGTH_LONG).show();
                     }
                 }
-
             }
-
-            //Bundle b = msg.getData();
-            //if (b != null) {
-                //Boolean status = b.getBoolean(SISMO.MQTT.KEYS.STATUS);
-                //Log.i(SISMO.LOG_TAG, "Status from MQTT mqttServiceMessenger on the case "+msg.what+": "+status.toString());
-            //}
         }
     }
 
@@ -212,7 +200,7 @@ public class HomeActivity extends AppCompatActivity {
         protected void onPreExecute() {
             super.onPreExecute();
             // Showing progress dialog
-            progressDialog.setMessage("Getting motos, please wait...");
+            progressDialog.setMessage("Obteniendo motos por favor espere...");
             progressDialog.setCancelable(false);
             progressDialog.show();
         }
@@ -221,11 +209,10 @@ public class HomeActivity extends AppCompatActivity {
         protected String doInBackground(Void... params) {
             try {
                 Log.i(SISMO.LOG_TAG, "Getting motos");
-                String url = "http://192.168.1.184:4000/api/v1/users/"+ SISMO.Username+"/motos";
+                String url = SISMO.SISMO_API_SERVER_HOST+"/api/v1/motos?userId="+SISMO.UserId;
                 HTTPClient httpClient = new HTTPClient(url);
 
                 httpClient.setMethod("GET");
-                httpClient.addHeader("access-token", SISMO.AccessToken);
                 String response = httpClient.makeRequest();
 
                 JSONObject jsonObj = new JSONObject(response);
@@ -274,10 +261,12 @@ public class HomeActivity extends AppCompatActivity {
                             m.SafetyLockStaus = safetyLockStatus;
                             m.ElectricalFlowStatus = electricalFlowStatus;
                             SISMO.MotoList.add(m);
-                            motosTopics += "/messages/from/"+m.Mac;
+                            motosTopics += "/messages/from/"+SISMO.Username+"/motos/" +m.Mac+";";
                         }
                         SharedPreferences sp = applicationContext.getSharedPreferences(SISMO.SHARED_PREFERENCES, Context.MODE_PRIVATE);
                         String mt = sp.getString("motosTopics", "");
+                        Log.i(SISMO.LOG_TAG, mt);
+                        Log.i(SISMO.LOG_TAG, motosTopics);
                         if(!motosTopics.equals(mt)){
                             Log.i(SISMO.LOG_TAG, "The new topics are diferent from the existent topics, we are subscribing to the new topics");
                             SharedPreferences.Editor editor = sp.edit();
@@ -350,11 +339,11 @@ public class HomeActivity extends AppCompatActivity {
                     toast.show();
                     break;
                 case "Connection error" :
-                    toast = Toast.makeText(applicationContext, "Error trying to connect to the server", Toast.LENGTH_SHORT);
+                    toast = Toast.makeText(applicationContext, "Error tratando de conectarse con el servidor", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
                 case "Another error" :
-                    toast = Toast.makeText(applicationContext, "Something was wrong", Toast.LENGTH_SHORT);
+                    toast = Toast.makeText(applicationContext, "Algo salio mal", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
             }
@@ -363,61 +352,153 @@ public class HomeActivity extends AppCompatActivity {
 
     public class PushReceiver extends BroadcastReceiver {
         @Override
-        public void onReceive(Context context, Intent i)
-        {
-            String topic = i.getStringExtra(SISMO.MQTT.KEYS.TOPIC);
-            String message = i.getStringExtra(SISMO.MQTT.KEYS.MESSAGE);
-            //int notificationId = i.getIntExtra(SISMO.MQTT.KEYS.NOTIFICATION_ID, -1);
-
-            try {
-                JSONObject json = new JSONObject(message);
-                String type = json.getString("type");
-                if(type.equals("response")){
+        public void onReceive(Context context, Intent i) {
+            if(i.getAction().equals(SISMO.MQTT.INTENT_MOTOS_UPDATED)){
+                adapter = new MotosAdapter(R.layout.moto_list_item, HomeActivity.this, activity);
+                recyclerView.setAdapter(adapter);
+            }else{
+                String topic = i.getStringExtra(SISMO.MQTT.KEYS.TOPIC);
+                String message = i.getStringExtra(SISMO.MQTT.KEYS.MESSAGE);
+                try {
+                    JSONObject json = new JSONObject(message);
+                    String type = json.getString("type");
                     String mac = json.getString("mac");
-                    String action = json.getString("action");
-                    if(action.equals("sm") ||  action.equals("em")){
-                        JSONObject info = json.getJSONObject("info");
-                        String monitoringStatus = info.getString("monitoringStatus");
-                        String safetyLockStatus = info.getString("safetyLockStatus");
-                        String electricalFlowStatus = info.getString("electricalFlowStatus");
-                        int length = SISMO.MotoList.size();
-                        for(int j=0; j<length; j++){
-                            if(SISMO.MotoList.get(j).Mac.equals(mac)){
-                                SISMO.MotoList.get(j).MonitorinStatus = monitoringStatus;
-                                SISMO.MotoList.get(j).SafetyLockStaus = safetyLockStatus;
-                                SISMO.MotoList.get(j).ElectricalFlowStatus = electricalFlowStatus;
+                    Moto moto = null;
+                    int length = SISMO.MotoList.size();
+                    for(int j=0; j<length; j++){
+                        if(SISMO.MotoList.get(j).Mac.equals(mac)){
+                            moto = SISMO.MotoList.get(j);
+                            break;
+                        }
+                    }
+                    if(type.equals("response")){
+                        String action = json.getString("action");
+                        if(action.equals("sm") ||  action.equals("em")){
+                            JSONObject info = json.getJSONObject("info");
+                            String monitoringStatus = info.getString("monitoringStatus");
+                            String safetyLockStatus = info.getString("safetyLockStatus");
+                            String electricalFlowStatus = info.getString("electricalFlowStatus");
+                            if(moto != null){
+                                moto.MonitorinStatus = monitoringStatus;
+                                moto.SafetyLockStaus = safetyLockStatus;
+                                moto.ElectricalFlowStatus = electricalFlowStatus;
                                 adapter = new MotosAdapter(R.layout.moto_list_item, context, (Activity)context);
                                 recyclerView.setAdapter(adapter);
-                                break;
+                            }
+                        }
+                    }else if(type.equals("message")){
+                        Log.i(SISMO.LOG_TAG, "message");
+                        String subject = json.getString("subject");
+                        if(subject.equals("motoMoved")){
+                            Log.i(SISMO.LOG_TAG, "Moto moved");
+                            if(moto != null){
+                                JSONObject info = json.getJSONObject("info");
+                                int distance = info.getInt("distance");
+                                String motoName = "la motocicleta "+moto.getBrandAndLine()+" con placa "+moto.Plate;
+                                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                                builder.setTitle("Alerta: Moto movida.");
+                                builder.setMessage("Hemos detectado que " + motoName + " ha sido movida " + String.valueOf(distance) + " metros desde su posicion de parqueo.");
+                                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                    }
+                                });
+                                if(distance==5){
+                                    builder.setIcon(R.drawable.ic_warning_yellow);
+                                }else if(distance == 15){
+                                    builder.setIcon(R.drawable.ic_warning_red);
+                                }else if(distance == 25){
+                                    final String motoMac = json.getString("mac");
+                                    JSONObject parkingPosition = info.getJSONObject("parkingPosition");
+                                    final double lat1 = parkingPosition.getDouble("latitude");
+                                    final double lon1 = parkingPosition.getDouble("longitude");
+                                    JSONObject presentPosition = info.getJSONObject("presentPosition");
+                                    final double lat2 = presentPosition.getDouble("latitude");
+                                    final double lon2 = presentPosition.getDouble("longitude");
+                                    builder.setIcon(R.drawable.ic_danger_red);
+                                    builder.setTitle("Peligro: Moto posiblemente robada.");
+                                    builder.setPositiveButton("Abrir mapa", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            Intent i = new Intent(HomeActivity.this, MapsActivity.class);
+                                            i.putExtra("mac", motoMac);
+                                            i.putExtra("parkingLatitude", lat1);
+                                            i.putExtra("parkingLongitude", lon1);
+                                            i.putExtra("presentLatitude", lat2);
+                                            i.putExtra("presentLongitude", lon2);
+                                            startActivity(i);
+                                            dialog.dismiss();
+                                        }
+                                    });
+                                    builder.setNegativeButton("Cerrar", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            dialog.dismiss();
+                                        }
+                                    });
+                                }
+                                AlertDialog dialog = builder.create();
+                                dialog.show();
+                            }
+                        }else if(subject.equals("connectionStatusChanged")){
+                            Log.i(SISMO.LOG_TAG, "connectionStatusChanged");
+                            JSONObject info = json.getJSONObject("info");
+                            String connectionStatus = info.getString("connectionStatus");
+                            if(moto != null){
+                                String motoName = "la motocicleta "+moto.getBrandAndLine()+" con placa "+moto.Plate;
+                                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                                if(connectionStatus.equals("lost")){
+                                    builder.setTitle("Alerta: Conexion perdida.");
+                                    builder.setMessage("Hemos perdido la conexion con " + motoName);
+                                    builder.setIcon(R.drawable.ic_connection_lost);
+
+                                }else{
+                                    builder.setTitle("Actulizacion: Conexion establiesida.");
+                                    builder.setMessage("Hemos establecido la conexion con " + motoName);
+                                    builder.setIcon(R.drawable.ic_connection_established);
+                                }
+                                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                    }
+                                });
+                                AlertDialog dialog = builder.create();
+                                dialog.show();
+                            }
+                        }else if(subject.equals("safetyLockStatusChanged")){
+                            Log.i(SISMO.LOG_TAG, "safetyLockStatusChanged");
+                            JSONObject info = json.getJSONObject("info");
+                            String safetyLockStatus = info.getString("safetyLockStatus");
+                            if(moto != null){
+                                moto.SafetyLockStaus = safetyLockStatus;
+                                String motoName = "la motocicleta "+moto.getBrandAndLine()+" con placa "+moto.Plate;
+                                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                                if(safetyLockStatus.equals("locked")){
+                                    builder.setTitle("Actualizacion: Seguro bloqueado.");
+                                    builder.setMessage("Hemos detectado que el seguro de " + motoName + " ha sido bloqueado.");
+                                    builder.setIcon(R.drawable.ic_check_green);
+                                }else{
+                                    builder.setTitle("Alerta: Seguro desbloqueado.");
+                                    builder.setMessage("Hemos detectado que el seguro de " + motoName + " ha sido desbloqueado.");
+                                    builder.setIcon(R.drawable.ic_ex_red);
+                                }
+                                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                    }
+                                });
+                                AlertDialog dialog = builder.create();
+                                dialog.show();
                             }
                         }
                     }
-                }else if(type.equals("warning")){
-                    String mac = json.getString("mac");
-                    String subject = json.getString("subject");
-                    String generalStatus = json.getString("generalStatus");
-                    if(subject.equals("safetyLockUnlocked")){
-
-                        int length = SISMO.MotoList.size();
-                        for(int j=0; j<length; j++){
-                            if(SISMO.MotoList.get(j).Mac.equals(mac)){
-                                SISMO.MotoList.get(j).SafetyLockStaus = "unloked";
-                                SISMO.MotoList.get(j).GeneralStatus = generalStatus;
-                                adapter = new MotosAdapter(R.layout.moto_list_item, context, (Activity)context);
-                                recyclerView.setAdapter(adapter);
-                                break;
-                            }
-                        }
-                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
                 }
-            } catch (JSONException e) {
-                e.printStackTrace();
             }
-
-            //NotificationManager mNotifyMgr = (NotificationManager) getActivity().getSystemService(NOTIFICATION_SERVICE);
-            //mNotifyMgr.cancel(notificationId);
-
-            //Toast.makeText(context, "Push message received - " + topic + ":" + message, Toast.LENGTH_LONG).show();
 
         }
     }

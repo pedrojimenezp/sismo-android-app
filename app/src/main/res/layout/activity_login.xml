@@ -109,4 +109,18 @@
         android:layout_below="@+id/lNameLayout"
         android:layout_centerHorizontal="true" />
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/signup_text"
+        android:id="@+id/signupButton1"
+        android:clickable="true"
+        android:enabled="true"
+        android:textStyle="bold"
+        android:typeface="sans"
+        android:onClick="onClickLaunchSignupActivityButton"
+        android:layout_gravity="center"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true" />
+
 </RelativeLayout>

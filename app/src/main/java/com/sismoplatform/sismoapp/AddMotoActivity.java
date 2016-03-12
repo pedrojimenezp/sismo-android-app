@@ -112,12 +112,12 @@ public class AddMotoActivity extends AppCompatActivity {
 
                 imageViewMotoImage.setImageBitmap(bitmap);
             } else {
-                Toast.makeText(this, "You haven't picked an image from galery",
+                Toast.makeText(this, "No has seleccionado una imagen de la galeria",
                         Toast.LENGTH_LONG).show();
                 this.base64EncodedImage = "";
             }
         } catch (Exception e) {
-            Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG)
+            Toast.makeText(this, "Ocurrio algun error", Toast.LENGTH_LONG)
                     .show();
         }
 
@@ -155,16 +155,16 @@ public class AddMotoActivity extends AppCompatActivity {
                 !plate.isEmpty() && !color.isEmpty() && !stringCylinderCapacity.isEmpty()){
             if(!this.base64EncodedImage.isEmpty()){
                 Log.i(SISMO.LOG_TAG, "Adding moto");
-                String bodyParams = "mac="+mac+"&brand="+brand+"&line="+line+"&model="+stringModel+"&plate="+
+                String bodyParams = "userId="+SISMO.UserId+"&mac="+mac+"&brand="+brand+"&line="+line+"&model="+stringModel+"&plate="+
                         plate+"&color="+color+"&cylinderCapacity="+stringCylinderCapacity+"&image="+base64EncodedImage+"&imageEncodeType=base64_url_safe";
                 AddMotos addMoto = new AddMotos();
                 addMoto.execute(bodyParams);
             }else{
-                Toast toast = Toast.makeText(getApplicationContext(), "You need to pick a image if your moto", Toast.LENGTH_SHORT);
+                Toast toast = Toast.makeText(getApplicationContext(), "Necesitas seleccionar una imagen para tu moto", Toast.LENGTH_SHORT);
                 toast.show();
             }
         }else{
-            Toast toast = Toast.makeText(getApplicationContext(), "You need to complete all fields", Toast.LENGTH_SHORT);
+            Toast toast = Toast.makeText(getApplicationContext(), "Necesitas llenar todos los campos", Toast.LENGTH_SHORT);
             toast.show();
         }
     }
@@ -178,7 +178,7 @@ public class AddMotoActivity extends AppCompatActivity {
             super.onPreExecute();
             // Showing progress dialog
             pDialog = new ProgressDialog(AddMotoActivity.this);
-            pDialog.setMessage("Saving moto");
+            pDialog.setMessage("Agregando moto");
             pDialog.setCancelable(false);
             pDialog.show();
 
@@ -187,35 +187,21 @@ public class AddMotoActivity extends AppCompatActivity {
         @Override
         protected String doInBackground(String... params) {
             try {
-                String url = "http://192.168.1.184:4000/api/v1/users/"+ SISMO.Username+"/motos";
+                String url = SISMO.SISMO_API_SERVER_HOST+"/api/v1/motos";
                 HTTPClient httpClient = new HTTPClient(url);
                 //httpClient.url = "http://www.google.com/search?q=mkyong";
-                System.out.println("Access token: " + SISMO.AccessToken);
                 httpClient.setMethod("POST");
-                httpClient.addHeader("access-token", SISMO.AccessToken);
-
 
                 httpClient.addParams(params[0]);
                 String response = httpClient.makeRequest();
                 System.out.println("Response: "+response);
 
                 JSONObject jsonObj = new JSONObject(response);
-                String responseType = jsonObj.getString("type");
-                /*System.out.println(responseType);
-                if(responseType.equals("LOGIN_SUCCESS")) {
-                    String accessToken = jsonObj.getString("accessToken");
-                    String refreshToken = jsonObj.getString("refreshToken");
-                    SharedPreferences sp = getSharedPreferences(MainActivity.SHARED_PREFERENCES, Context.MODE_PRIVATE);
-                    SharedPreferences.Editor editor = sp.edit();
-                    editor.putString("accessToken", accessToken);
-                    editor.putString("refreshToken", refreshToken);
-                    editor.putString("username", username);
-                    editor.apply();
-                }*/
-                return responseType;
+                String responseStatus = jsonObj.getString("status");
+                return responseStatus;
             } catch (ConnectException e1) {
                 System.out.println(e1.toString());
-                return "CONNECTION_ERROR";
+                return "Connection error";
             } catch (Exception e2){
                 System.out.println(e2.toString());
                 return "ANOTHER_ERROR";
@@ -231,27 +217,27 @@ public class AddMotoActivity extends AppCompatActivity {
             }
             Toast toast;
             switch (result) {
-                case "CREATED" :
+                case "Created" :
                     //Intent intent = new Intent(acti, HomeActivity.class);
                     //startActivity(intent);
                     //finish();
-                    toast = Toast.makeText(AddMotoActivity.this, "Moto registered", Toast.LENGTH_SHORT);
+                    toast = Toast.makeText(AddMotoActivity.this, "Moto agregada", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
-                case "BAD_REQUEST" :
+                case "Bad request" :
                     toast = Toast.makeText(AddMotoActivity.this, "Bad request", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
-                case "UNAUTHORIZED" :
+                case "Unauthorized" :
                     toast = Toast.makeText(AddMotoActivity.this, "Invalid access token", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
-                case "CONNECTION_ERROR" :
-                    toast = Toast.makeText(AddMotoActivity.this, "Error trying to connect to the server", Toast.LENGTH_SHORT);
+                case "Connection error" :
+                    toast = Toast.makeText(AddMotoActivity.this, "Error tratando de conectarse con el servidor", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
-                case "ANOTHER_ERROR" :
-                    toast = Toast.makeText(AddMotoActivity.this, "Something was wrong", Toast.LENGTH_SHORT);
+                case "Another error":
+                    toast = Toast.makeText(AddMotoActivity.this, "Algo salio mal", Toast.LENGTH_SHORT);
                     toast.show();
                     break;
             }
